@@ -1,0 +1,1604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src https://openrouter.ai; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Two Bottles - do human biases in adversarial mind games replicate in LLMs?</title>
+<style>
+/* ============ theme tokens & layout (reused from the author's playground) ============ */
+:root{
+  --bg:#fbfaf8; --panel:#fff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e3e0da;
+  --accent:#8a4b2a; --keep:#3b6ea5; --switch:#b8683a; --other:#9a9a9a;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* chart series (validated categorical palette, fixed slot order) */
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --pos:#2a78d6; --neg:#e34948; --extra:#4a3aa7;
+  /* ordinal depth ramp L0→L3 + neutrals */
+  --d0:#86b6ef; --d1:#5598e7; --d2:#256abf; --d3:#104281; --dmix:#6f6e69; --dnon:#b5b4ac;
+  --grid:#eceae4; --axis:#c9c6bf;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#17181a; --panel:#1f2023; --ink:#e8e6e3; --muted:#9a9894; --line:#32343a;
+  --accent:#d08b5f; --keep:#6a9ed4; --switch:#d8865a; --other:#77797f;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --pos:#3987e5; --neg:#e66767; --extra:#9085e9;
+  --d0:#9ec5f4; --d1:#6da7ec; --d2:#3987e5; --d3:#1c5cab; --dmix:#898781; --dnon:#52514e;
+  --grid:#2a2c30; --axis:#44464c;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+header{display:flex;align-items:baseline;gap:18px;padding:14px 20px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:9}
+h1{font-size:15px;margin:0;font-weight:650;letter-spacing:-.01em}
+h1 span{color:var(--muted);font-weight:400}
+nav{display:flex;gap:4px;margin-left:auto}
+nav a{background:none;border:1px solid transparent;color:var(--muted);text-decoration:none;
+  padding:5px 13px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px}
+nav a.on{background:var(--bg);color:var(--ink);border-color:var(--line);font-weight:600}
+nav a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+main{padding:20px;max-width:1100px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card+.card{margin-top:14px}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);margin:13px 0 5px;font-weight:600}
+label:first-child{margin-top:0}
+select,input,textarea,button.go{width:100%;padding:8px 10px;border:1px solid var(--line);
+  border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px}
+textarea{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+button.go{background:var(--accent);color:#fff;border-color:transparent;font-weight:600;
+  cursor:pointer;margin-top:16px;padding:10px}
+button.go:disabled{opacity:.5;cursor:not-allowed}
+button.mini{width:auto;padding:4px 10px;font-size:12px;border:1px solid var(--line);
+  border-radius:6px;background:var(--bg);color:var(--ink);cursor:pointer}
+.hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+.warn{color:var(--switch);font-weight:600}
+.bars{display:flex;flex-direction:column;gap:7px;margin:4px 0 16px}
+.bar{display:grid;grid-template-columns:76px 1fr 46px;gap:10px;align-items:center;font-size:12.5px}
+.bar i{font-style:normal;font-family:var(--mono);color:var(--muted)}
+.bar .t{height:19px;border-radius:4px;min-width:2px;transition:width .3s}
+.bar b{font-family:var(--mono);font-weight:600;text-align:right;font-size:12px}
+.k{background:var(--keep)}.s{background:var(--switch)}.o{background:var(--other)}
+.resp{border-top:1px solid var(--line);padding:11px 0}
+.resp:first-of-type{border-top:none}
+.meta{display:flex;gap:9px;flex-wrap:wrap;align-items:center;font-size:11px;
+  color:var(--muted);font-family:var(--mono);margin-bottom:5px}
+.pill{padding:1.5px 7px;border-radius:20px;background:var(--bg);border:1px solid var(--line)}
+.pill.k{background:var(--keep);color:#fff;border-color:transparent}
+.pill.s{background:var(--switch);color:#fff;border-color:transparent}
+.pill.o{background:var(--other);color:#fff;border-color:transparent}
+.txt{white-space:pre-wrap;font-size:13px;max-height:150px;overflow:hidden;position:relative;
+  cursor:pointer;line-height:1.5}
+.txt.open{max-height:none}
+.txt:not(.open):after{content:"";position:absolute;inset:auto 0 0 0;height:36px;
+  background:linear-gradient(transparent,var(--panel))}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);border-bottom:1px solid var(--line);padding:7px 9px;font-weight:600}
+td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+td.mono,th.mono{font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+th.num{text-align:right}
+.cols{display:grid;grid-template-columns:390px 1fr;gap:20px;align-items:start}
+@media(max-width:1000px){.cols{grid-template-columns:1fr}}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.figs img{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
+.figs figure{margin:0}
+.figs figcaption{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.figs figcaption code{font-family:var(--mono)}
+.empty{color:var(--muted);padding:26px 0;text-align:center;font-size:13px}
+.bad{background:#b4433022;border:1px solid #b44330;border-radius:8px;padding:10px 12px;
+  font-size:12.5px;margin-top:12px}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);
+  border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;
+  vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+pre.sum{white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;line-height:1.5;
+  max-height:520px;overflow:auto;margin:0}
+
+/* ============ additions for the research site ============ */
+.banner{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 20px;
+  font-size:12.5px;color:var(--muted);text-align:center}
+.banner b{color:var(--ink)}
+.prose{font-size:16px;line-height:1.72;max-width:72ch}
+.prose p{margin:0 0 1.05em}
+.prose h2{font-size:24px;line-height:1.3;letter-spacing:-.015em;margin:.2em 0 .7em}
+.prose h3{font-size:18px;margin:1.7em 0 .55em;letter-spacing:-.01em}
+.prose h4{font-size:15.5px;margin:1.3em 0 .45em}
+.prose ul{padding-left:1.35em;margin:0 0 1.05em}
+.prose li{margin:.3em 0}
+.prose a{color:var(--accent)}
+h2.sec{font-size:21px;letter-spacing:-.015em;margin:.2em 0 .6em}
+.lede{font-size:14.5px;color:var(--muted);max-width:78ch;line-height:1.65;margin:0 0 18px}
+.lede code,figcaption code,.hint code{font-family:var(--mono);font-size:.92em}
+aside.addition{border:1px dashed var(--line);border-radius:10px;padding:14px 16px;margin:20px 0;
+  background:var(--panel)}
+aside.addition>p{font-size:12px;color:var(--muted);margin:0 0 10px}
+aside.addition td:last-child{white-space:normal;min-width:230px;font-size:11.5px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+figure.chart{margin:0 0 26px;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:18px 18px 12px}
+figure.chart h3{margin:0 0 4px;font-size:16px;letter-spacing:-.01em}
+figure.chart .sub{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+.chartwrap{overflow-x:auto;padding:2px 0 6px}
+.chartwrap svg{display:block}
+figcaption{font-size:12.8px;color:var(--muted);line-height:1.6;max-width:80ch;margin-top:8px}
+figure.chart details{margin-top:10px;font-size:12.5px}
+figure.chart summary{cursor:pointer;color:var(--muted);font-size:12px}
+figure.chart summary:focus-visible{outline:2px solid var(--accent)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block;background:var(--c)}
+.sw.line{height:3px;border-radius:2px;width:16px}
+svg text{font-family:inherit}
+svg .ax{fill:var(--muted);font-size:11px}
+svg .axl{fill:var(--muted);font-size:11.5px}
+svg .lbl{fill:var(--ink);font-size:12px}
+svg .vl{fill:var(--muted);font-size:11px;font-family:var(--mono)}
+svg .gl{stroke:var(--grid);stroke-width:1}
+svg .axline{stroke:var(--axis);stroke-width:1}
+svg .ref{stroke:var(--ink);stroke-width:1;stroke-dasharray:4 3;opacity:.55}
+svg .hit:focus{outline:2px solid var(--accent)}
+.c-s1{--c:var(--s1)}.c-s2{--c:var(--s2)}.c-s3{--c:var(--s3)}.c-s4{--c:var(--s4)}.c-s5{--c:var(--s5)}
+.c-pos{--c:var(--pos)}.c-neg{--c:var(--neg)}.c-extra{--c:var(--extra)}.c-neutral{--c:var(--other)}
+.c-d0{--c:var(--d0)}.c-d1{--c:var(--d1)}.c-d2{--c:var(--d2)}.c-d3{--c:var(--d3)}
+.c-dmix{--c:var(--dmix)}.c-dnon{--c:var(--dnon)}
+svg .fillc{fill:var(--c)}
+svg .strokec{stroke:var(--c);fill:none}
+#tooltip{position:fixed;z-index:99;background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:7px;padding:7px 10px;font-size:12px;
+  line-height:1.5;max-width:320px;pointer-events:none;box-shadow:0 3px 14px rgba(0,0,0,.18)}
+.promptblock{position:relative;margin:0 0 6px}
+.promptblock pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);
+  font-size:12px;line-height:1.55;
+  background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0}
+code{overflow-wrap:anywhere}
+.promptblock .copy{position:absolute;top:8px;right:8px}
+.dl{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin:10px 0 0}
+.dl a{color:var(--accent)}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:12px;
+  padding:16px 20px;margin-top:30px;text-align:center;line-height:1.7}
+footer a{color:var(--accent)}
+.notejs{max-width:72ch;margin:20px auto;font-size:13.5px;color:var(--muted)}
+@media(max-width:700px){.row3{grid-template-columns:1fr}.row2{grid-template-columns:1fr}
+  header{gap:8px}nav{margin-left:0}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Two Bottles <span>- humans vs LLMs in an adversarial mind game</span></h1>
+  <nav aria-label="Sections">
+    <a href="#/writeup" data-tab="writeup">Writeup</a>
+    <a href="#/graphs" data-tab="graphs">Graphs</a>
+    <a href="#/prompts" data-tab="prompts">Prompts</a>
+    <a href="#/playground" data-tab="playground">Playground</a>
+  </nav>
+</header>
+
+<div class="banner">🚧 <b>Work in progress.</b> This project is ongoing; the numbers below come
+from the first budget run (<code>budget_v1</code>, ~10,000 responses over five small/mid-tier models)
+and are expected to be extended.</div>
+
+<noscript><p class="notejs">This page uses JavaScript to draw the charts, render the prompt data
+and run the playground. The writeup below is readable without it, but the other three sections
+will stay empty. The underlying data is in <a href="data.json">data.json</a>,
+<a href="prompts.json">prompts.json</a>, <a href="models.json">models.json</a> and
+<a href="summary.md">summary.md</a>.</p></noscript>
+
+<main>
+
+<!-- ================================ 1 · WRITEUP ================================ -->
+<section id="tab-writeup" class="tab" aria-labelledby="wr-h">
+<article class="prose">
+<h2 id="wr-h">Do human biases in adversarial mind games replicate in LLMs?</h2>
+
+<p>Do human biases/patterns in mind games replicate in LLMs (depending on model (strength),
+temperature, and prompt), and how well they are able to adversarially model people. This is
+important for AI safety (modelling people/bluffs/deception)</p>
+
+<p>The Game: (from Sherlock) - A murderer has 2 pills, one of them is poisoned. He knows which
+is which, and gives you one of them. You can either keep yours, or switch and take his. He takes
+the other one. You want to survive</p>
+
+<h3>TLDR</h3>
+
+<p>Asked one-on-one with time to think, about 90% of people (n≈150) keep the bottle they were
+given - replicated at 80% and 95% by two other askers. I put the same problem to five LLMs
+10,000 times with varying conditions. Weak models do the opposite of humans almost
+deterministically. mid-tier models are more spread out. frontier models appear to converge on
+the human answer.</p>
+
+<p>My prompts/Data/more documentation/a playground to test this yourself can be found
+in the <a href="#/prompts">Prompts</a>, <a href="#/graphs">Graphs</a> and <a href="#/playground">Playground</a> tabs</p>
+
+<aside class="addition">
+<p>Model comparison - a site addition compiled from the run data (<code>data.json</code> /
+<code>summary.md</code>), not part of the author's text. KEEP rates are
+<b>conditional</b>: KEEP / (KEEP + SWITCH).</p>
+<div class="tablewrap" id="writeup-model-table"></div>
+</aside>
+
+<h3>Time:</h3>
+
+<p>Humans:<br>
+Were spread out over 18 months, so time is not exact.<br>
+Ca 20-30hr Questioning people, 10hr writing it down. In total ca 5hr planning/thinking of
+modifications... 4hr analysing/evaluating<br>
+AI: 2-3hr Planning/Branstorming. 3hr programming (with Claude), 3hr engineering
+prompts/optimising models/..., 3hr analysing/evaluating, 4hr writing up/collecting</p>
+
+<h3>Results/Surprises</h3>
+
+<h4>Humans:</h4>
+<ul>
+<li>≈90 percent keep, when talked to one-on-one and given time to think (n≈150). Unexpectedly
+Strong Status-Quo-Bias!</li>
+<li>Surprising Special Cases:
+  <ul>
+  <li>Adding "He has a win-streak of 3" +≈20% switch (n≈50)</li>
+  <li>Asking a group at once: +≈30% Switch (n≈3x20)</li>
+  <li>Under time pressure, many people falsely think of the Monty Hall Problem and thus switch
+  (n≈5/30)</li>
+  </ul>
+</li>
+</ul>
+
+<h4>AI:</h4>
+<ul>
+<li>I made a <a href="#/playground">playground</a> where you can play around with the
+different parameters/prompts/models/framing/ and replicate/refute it</li>
+<li>Test: Five models × four framings × four roles × five temperatures × 25 replicates = 10,000
+responses, $5</li>
+<li>Only weak-mid tier models</li>
+<li>Weak models have anti-status-quo bias (always switch) and mid tier models are more spread
+out.</li>
+<li>Weak models (qwen3-30b-a3b-instruct-2507, granite-4.1-8b) have low per question variance,
+mid tier models (gemma-4-26b-a4b-it, gpt-4o-mini) higher.</li>
+<li>Weak models had a really strong anti-status quo bias (so switched). This was surprising.
+Introducing the idea of bluffing on higher levels increased variance.</li>
+<li>Different framing (if-you-don't-intervene-you-switch vs if-you-don't-intervene-you-keep)
+had no/little effect on some models (Gemma) and reversed the answers for the others.</li>
+<li>The control prompt ("murderer" also does not know which is which) interestingly had
+basically the same result as the main prompt for some of the models - surprising</li>
+<li>When introducing higher level bluffs:  more of higher/third level reasoning ('he thought
+about me thinking that he is planning'). Created more complex adversarial modelling within weak
+models. Even weak models can decently model a human opponent (surprising)</li>
+<li>Surprising: The control group is nearly identical to the normal group (sometimes), but
+different to the if-you-do-not-intervene-we-switch one.</li>
+<li>With temperature there was slightly higher variance, and much more unparseable answers.</li>
+</ul>
+
+<h3>To-expand/not-covered:</h3>
+<ul>
+<li>How stronger models interact with this (varying prompt/framing/...), as reasoning was
+rather shallow in the smaller ones.</li>
+<li>I have not tested well whether better models become more human-like in their bluff
+level/answer well (asking Opus a few times and 9/10 keep, Fable 8/10 makes it pretty probable
+though), so that is something I have yet to do. Biases probably arise only in better models?</li>
+<li>Switching roles for the AIs and simulating them to be the murderer - this is not only
+modelling an opponent, but trying to out-bluff him, which seems more relevant for AI
+safety/deception/elicitation. I plan to do this after finishing this, since this seems much
+more relevant</li>
+</ul>
+
+<h3>Mistakes</h3>
+<ul>
+<li>Used llama-3.1-8b-instruct, but it basically never answered adhering to the answer scheme,
+I had to disregard it. Should have tested more thoroughly in before.</li>
+<li>In one of the combinations of prompts there was an internal contradiction, which I did not
+see.</li>
+<li>At the beginning, I did not document well, just writing everything in a big file</li>
+</ul>
+</article>
+</section>
+
+<!-- ================================ 2 · GRAPHS ================================ -->
+<section id="tab-graphs" class="tab" aria-labelledby="gr-h">
+<h2 class="sec" id="gr-h">Graphs</h2>
+<p class="lede">All interactive charts are drawn from <a href="data.json">data.json</a>
+(9,986 chain-of-thought responses; 5 models × 4 scenarios × 4 personas × 5 temperatures × 25
+replicates). Two denominators are in play and every caption names the one it uses:
+<b>conditional</b> = KEEP / (KEEP + SWITCH), and <b>unconditional</b> = KEEP / all responses
+including RANDOMISE, THIRD_OPTION, REFUSE and UNPARSEABLE. Bootstrap confidence intervals were
+not exported to <code>data.json</code>; they are in <a href="summary.md">summary.md</a>.
+Each chart has a data-table twin under it.</p>
+<div id="charts"></div>
+<h2 class="sec">Pre-rendered figures</h2>
+<p class="lede">The six figures produced by the analysis pipeline, unchanged. Denominator notes
+are from the figures table in <a href="summary.md">summary.md</a>.</p>
+<div class="figs" id="figures"></div>
+</section>
+
+<!-- ================================ 3 · PROMPTS ================================ -->
+<section id="tab-prompts" class="tab" aria-labelledby="pr-h">
+<h2 class="sec" id="pr-h">Prompts, personas &amp; models</h2>
+<p class="lede">Everything below is rendered verbatim from
+<a href="prompts.json">prompts.json</a> and <a href="models.json">models.json</a> - the exact
+text the 10,000 responses were collected with.</p>
+<div id="prompts-mount"></div>
+</section>
+
+<!-- ================================ 4 · PLAYGROUND ================================ -->
+<section id="tab-playground" class="tab" aria-labelledby="pg-h">
+<h2 class="sec" id="pg-h">Playground</h2>
+
+<div class="card" id="pg-gate">
+  <h3 style="margin:0 0 8px;font-size:16px">Before you paste an API key, read this</h3>
+  <p style="max-width:72ch;line-height:1.65;margin:0 0 10px;font-size:13.5px">
+  This playground lets you re-run the experiment with your own
+  <a href="https://openrouter.ai" style="color:var(--accent)">OpenRouter</a> API key, directly
+  from this page.</p>
+  <ul style="max-width:72ch;line-height:1.7;font-size:13.5px;margin:0 0 12px;padding-left:1.3em">
+    <li>Your key is used <b>only</b> to call <code>https://openrouter.ai/api/v1/chat/completions</code>,
+    straight from your browser. This site has <b>no backend</b> - nothing you type here is sent
+    anywhere else, and this page's Content-Security-Policy blocks network requests to any other host.</li>
+    <li>The key is <b>never stored</b>: not in localStorage, not in a cookie, not in the URL. It
+    lives in a JavaScript variable until you press "clear key" or close the tab. Reloading the
+    page forgets it (and brings back this notice).</li>
+    <li><b>Use a spend-limited key.</b> OpenRouter lets you set a per-key credit limit when you
+    create a key - make one with a small limit (e.g. $1) just for this page.</li>
+    <li>Batches are capped at 10 calls, and a cost ceiling is shown before Run is enabled.
+    To price arbitrary models, enabling the playground fetches OpenRouter's public model-price
+    list - a keyless request to the same host, nothing else.</li>
+  </ul>
+  <button class="go" id="pg-enable" style="max-width:340px">I understand, enable the playground</button>
+</div>
+
+<div id="pg-app" hidden></div>
+</section>
+
+</main>
+
+<footer>
+  Two Bottles · a work-in-progress research project · site generated from the repository's data
+  (<code>bundle.js</code>) - no numbers on this page were computed outside the analysis pipeline.<br>
+  Downloads: <a href="data.json">data.json</a> · <a href="prompts.json">prompts.json</a> ·
+  <a href="models.json">models.json</a> · <a href="summary.md">summary.md</a>
+</footer>
+
+<div id="tooltip" hidden></div>
+
+<script src="bundle.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   Two Bottles site script. Everything dynamic is built with DOM APIs
+   (createElement/textContent) - innerHTML is never used for content that
+   comes from the JSON bundle or from model output.
+   ===================================================================== */
+
+var BD = window.BOTTLES_DATA, PR = window.BOTTLES_PROMPTS, MD = window.BOTTLES_MODELS;
+
+/* ---------------- tiny DOM helpers ---------------- */
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, text){
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = text;
+  return e;
+}
+var SVGNS = "http://www.w3.org/2000/svg";
+function sv(tag, attrs, parent){
+  var e = document.createElementNS(SVGNS, tag);
+  if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function pct(x, dp){ return (100*x).toFixed(dp === undefined ? 1 : dp) + "%"; }
+
+/* ---------------- tooltip (hover + keyboard focus) ---------------- */
+var tipEl = $("tooltip");
+function showTip(target, text){
+  tipEl.textContent = text;
+  tipEl.hidden = false;
+  var r = target.getBoundingClientRect();
+  var x = Math.min(r.left + r.width/2, window.innerWidth - 170);
+  tipEl.style.left = Math.max(6, x - 80) + "px";
+  var top = r.top - tipEl.offsetHeight - 8;
+  if (top < 4) top = r.bottom + 8;
+  tipEl.style.top = top + "px";
+}
+function hideTip(){ tipEl.hidden = true; }
+function tip(node, text){
+  node.classList.add("hit");
+  node.setAttribute("tabindex", "0");
+  node.setAttribute("role", "img");
+  node.setAttribute("aria-label", text);
+  node.addEventListener("mouseenter", function(){ showTip(node, text); });
+  node.addEventListener("mouseleave", hideTip);
+  node.addEventListener("focus", function(){ showTip(node, text); });
+  node.addEventListener("blur", hideTip);
+}
+window.addEventListener("scroll", hideTip, true);
+
+/* ---------------- shared model metadata ---------------- */
+var SHORT = {
+  "google/gemma-4-26b-a4b-it": "gemma-4-26b",
+  "ibm-granite/granite-4.1-8b": "granite-4.1-8b",
+  "meta-llama/llama-3.1-8b-instruct": "llama-3.1-8b",
+  "openai/gpt-4o-mini": "gpt-4o-mini",
+  "qwen/qwen3-30b-a3b-instruct-2507": "qwen3-30b"
+};
+function shortName(id){ return SHORT[id] || id; }
+var TIER = {};
+if (MD) MD.models.forEach(function(m){ TIER[m.id] = m.tier; });
+/* fixed categorical slot per model (color follows the entity on every chart) */
+var MODEL_SLOT = {};
+if (BD) BD.meta.models.forEach(function(m, i){ MODEL_SLOT[m] = "c-s" + (i+1); });
+var SCEN_ORDER = ["default_keep", "default_switch", "neutral_switch", "symmetric_blind"];
+var SCEN_SLOT = { default_keep:"c-s1", default_switch:"c-s2", neutral_switch:"c-s3", symmetric_blind:"c-s4" };
+function scenShort(s){
+  var lbl = (BD && BD.meta.scenario_labels && BD.meta.scenario_labels[s]) || s;
+  return lbl.split(" - ")[0];
+}
+
+/* unparseable share per model, computed from by_model_scenario */
+function unparseableShare(model){
+  var u = 0, n = 0;
+  BD.by_model_scenario.forEach(function(r){
+    if (r.model === model){ u += r.UNPARSEABLE; n += r.n; }
+  });
+  return u / n;
+}
+
+/* ---------------- generic table builder (DOM only) ---------------- */
+function buildTable(caption, headers, rows, numericFrom){
+  var wrap = el("div", "tablewrap");
+  var t = el("table");
+  if (caption){
+    var c = el("caption", "vh", caption);
+    t.appendChild(c);
+  }
+  var thead = el("thead"), trh = el("tr");
+  headers.forEach(function(h, i){
+    var th = el("th", i >= (numericFrom === undefined ? 1 : numericFrom) ? "num" : "", h);
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh); t.appendChild(thead);
+  var tb = el("tbody");
+  rows.forEach(function(row){
+    var tr = el("tr");
+    row.forEach(function(cell, i){
+      var td = el("td", i >= (numericFrom === undefined ? 1 : numericFrom) ? "num" : "", String(cell));
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); wrap.appendChild(t);
+  return wrap;
+}
+
+function makeFigure(title, sub, legendItems, svgNode, captionText, tableTitle, tableNode){
+  var fig = el("figure", "chart");
+  fig.appendChild(el("h3", "", title));
+  if (sub) fig.appendChild(el("p", "sub", sub));
+  if (legendItems && legendItems.length){
+    var lg = el("div", "legend");
+    legendItems.forEach(function(it){
+      var s = el("span");
+      var sw = el("i", "sw " + it.cls);
+      if (it.line) sw.classList.add("line");
+      s.appendChild(sw);
+      s.appendChild(document.createTextNode(" " + it.label));
+      lg.appendChild(s);
+    });
+    fig.appendChild(lg);
+  }
+  var wrap = el("div", "chartwrap");
+  wrap.appendChild(svgNode);
+  fig.appendChild(wrap);
+  var cap = el("figcaption");
+  cap.textContent = captionText;
+  fig.appendChild(cap);
+  if (tableNode){
+    var det = el("details");
+    det.appendChild(el("summary", "", tableTitle || "Data table"));
+    det.appendChild(tableNode);
+    fig.appendChild(det);
+  }
+  return fig;
+}
+
+/* =====================================================================
+   CHARTS
+   ===================================================================== */
+var W = 780, ML = 158, MR = 64;
+
+function xAxis(svg, x0, x1, y, dom0, dom1, ticks, fmt){
+  sv("line", {x1:x0, y1:y, x2:x1, y2:y, "class":"axline"}, svg);
+  ticks.forEach(function(t){
+    var x = x0 + (t - dom0) / (dom1 - dom0) * (x1 - x0);
+    sv("line", {x1:x, y1:y, x2:x, y2:y+4, "class":"axline"}, svg);
+    var txt = sv("text", {x:x, y:y+17, "text-anchor":"middle", "class":"ax"}, svg);
+    txt.textContent = fmt(t);
+  });
+}
+function grid(svg, x0, x1, yTop, yBot, dom0, dom1, ticks){
+  ticks.forEach(function(t){
+    if (t === dom0) return;
+    var x = x0 + (t - dom0) / (dom1 - dom0) * (x1 - x0);
+    sv("line", {x1:x, y1:yTop, x2:x, y2:yBot, "class":"gl"}, svg);
+  });
+}
+
+/* ---- 1 · capability ladder ---- */
+function chartLadder(){
+  var rows = BD.by_model_scenario
+    .filter(function(r){ return r.scenario === "default_keep"; })
+    .slice().sort(function(a,b){ return b.keep_conditional - a.keep_conditional; });
+  var barH = 24, gap = 14, topPad = 40;
+  var plotH = rows.length * (barH + gap) - gap;
+  var H = topPad + plotH + 34;
+  var PW = W - ML - MR;
+  var svg = sv("svg", {width:W, height:H, viewBox:"0 0 "+W+" "+H,
+    role:"img", "aria-label":"Horizontal bar chart of conditional KEEP rate per model in the default-keep framing, with a reference line at 90% for humans and Claude Opus"});
+  var ticks = [0,.2,.4,.6,.8,1];
+  grid(svg, ML, ML+PW, topPad-6, topPad+plotH+4, 0, 1, ticks);
+  xAxis(svg, ML, ML+PW, topPad+plotH+6, 0, 1, ticks, function(t){ return Math.round(t*100)+"%"; });
+
+  rows.forEach(function(r, i){
+    var y = topPad + i * (barH + gap);
+    var w = Math.max(2, r.keep_conditional * PW);
+    var lbl = sv("text", {x:ML-10, y:y+barH/2+4, "text-anchor":"end", "class":"lbl"}, svg);
+    lbl.textContent = shortName(r.model);
+    var tier = sv("text", {x:ML-10, y:y+barH/2+16, "text-anchor":"end", "class":"ax"}, svg);
+    tier.textContent = r.model === "meta-llama/llama-3.1-8b-instruct"
+      ? "(" + TIER[r.model] + " · excluded)" : "(" + TIER[r.model] + " tier)";
+    var bar = sv("rect", {x:ML, y:y, width:w, height:barH, rx:4, "class":"fillc"}, svg);
+    bar.classList.add("c-s1");
+    tip(bar, shortName(r.model) + " - conditional KEEP " + pct(r.keep_conditional) +
+      " (" + r.KEEP + " KEEP / " + r.SWITCH + " SWITCH of " + r.n + " responses)" +
+      (r.model === "meta-llama/llama-3.1-8b-instruct" ? " - excluded from headline claims: ~44% of its responses were unparseable" : ""));
+    var v = sv("text", {x:ML+w+7, y:y+barH/2+4, "class":"vl"}, svg);
+    v.textContent = pct(r.keep_conditional);
+  });
+
+  /* reference line: humans ≈0.90 and Opus 0.90 coincide */
+  var refX = ML + BD.human_data.main.keep_pct/100 * PW;
+  sv("line", {x1:refX, y1:topPad-24, x2:refX, y2:topPad+plotH+4, "class":"ref"}, svg);
+  var r1 = sv("text", {x:refX-6, y:topPad-26, "text-anchor":"end", "class":"axl"}, svg);
+  r1.textContent = "humans ≈" + BD.human_data.main.keep_pct + "% keep (approx., n≈" + BD.human_data.main.n + ")";
+  var r2 = sv("text", {x:refX-6, y:topPad-12, "text-anchor":"end", "class":"axl"}, svg);
+  r2.textContent = "Claude Opus " + BD.informal_frontier.keep_pct + "% (n=" + BD.informal_frontier.n + ", informal)";
+
+  var tbl = buildTable(null,
+    ["Model","Tier","KEEP","SWITCH","Other/unparseable","n","KEEP (conditional)"],
+    rows.map(function(r){
+      return [r.model, TIER[r.model], r.KEEP, r.SWITCH,
+        r.RANDOMISE + r.THIRD_OPTION + r.REFUSE + r.UNPARSEABLE, r.n, pct(r.keep_conditional,2)];
+    }));
+
+  return makeFigure(
+    "1 · The capability ladder", "Conditional KEEP rate in the default_keep framing", null, svg,
+    "Denominator: conditional - KEEP / (KEEP + SWITCH), in the default_keep scenario (the phrasing closest to how humans were asked), pooled over all personas and temperatures (n=500 responses per model). " +
+    "Reference line: ≈90% of humans keep - an approximate figure (n≈150, collected informally over ~18 months; the sample skews young, 15–25, and mathematically able; two other askers replicated at 80% and 95%) - and Claude Opus at 90%, which is n=10 and informal, not part of the main run. " +
+    "llama-3.1-8b is shown but excluded from the project's headline claims: ~44% of its responses were unparseable.",
+    "Data table (counts per answer)", tbl);
+}
+
+/* ---- 2 · framing effect ---- */
+function chartFraming(){
+  var models = BD.meta.models;
+  var barH = 17, inGap = 4, groupGap = 26, topPad = 14;
+  var groupH = SCEN_ORDER.length * (barH + inGap) - inGap;
+  var plotH = models.length * (groupH + groupGap) - groupGap;
+  var H = topPad + plotH + 34;
+  var PW = W - ML - MR;
+  var svg = sv("svg", {width:W, height:H, viewBox:"0 0 "+W+" "+H, role:"img",
+    "aria-label":"Grouped bar chart of conditional KEEP rate per model and scenario"});
+  var ticks = [0,.2,.4,.6,.8,1];
+  grid(svg, ML, ML+PW, topPad-4, topPad+plotH+4, 0, 1, ticks);
+  xAxis(svg, ML, ML+PW, topPad+plotH+6, 0, 1, ticks, function(t){ return Math.round(t*100)+"%"; });
+
+  models.forEach(function(m, gi){
+    var gy = topPad + gi * (groupH + groupGap);
+    var lbl = sv("text", {x:ML-10, y:gy+groupH/2+4, "text-anchor":"end", "class":"lbl"}, svg);
+    lbl.textContent = shortName(m);
+    SCEN_ORDER.forEach(function(s, si){
+      var r = BD.by_model_scenario.find(function(q){ return q.model===m && q.scenario===s; });
+      if (!r) return;
+      var y = gy + si * (barH + inGap);
+      var w = Math.max(2, r.keep_conditional * PW);
+      var bar = sv("rect", {x:ML, y:y, width:w, height:barH, rx:3, "class":"fillc"}, svg);
+      bar.classList.add(SCEN_SLOT[s]);
+      tip(bar, shortName(m) + " · " + scenShort(s) + " - conditional KEEP " + pct(r.keep_conditional) +
+        " (" + r.KEEP + "K/" + r.SWITCH + "S of " + r.n + ")");
+      var v = sv("text", {x:ML+w+6, y:y+barH/2+4, "class":"vl", "font-size":"10"}, svg);
+      v.textContent = pct(r.keep_conditional, 0);
+    });
+  });
+
+  var legend = SCEN_ORDER.map(function(s){
+    return {cls:SCEN_SLOT[s], label:scenShort(s)};
+  });
+  var tbl = buildTable(null,
+    ["Model","Scenario","KEEP","SWITCH","n","KEEP (conditional)"],
+    BD.by_model_scenario.map(function(r){
+      return [r.model, r.scenario, r.KEEP, r.SWITCH, r.n, pct(r.keep_conditional,2)];
+    }));
+
+  return makeFigure("2 · Framing effect",
+    "Conditional KEEP per model × scenario", legend, svg,
+    "Denominator: conditional - KEEP / (KEEP + SWITCH) per model and scenario (n≈500 responses each - exact n in the table - pooled over personas and temperatures). Scenarios: " +
+    SCEN_ORDER.map(function(s){ return scenShort(s) + " = " + BD.meta.scenario_labels[s].split(" - ")[1]; }).join("; ") +
+    ". Caveats: the control (symmetric_blind) is partly contaminated - the adversary_bluff persona asserts the murderer knows which bottle is poisoned, which the control scenario denies; that persona is 25% of the control's cells (see prompts.json, notes.known_contradiction). llama-3.1-8b is shown but excluded from the project's headline claims: ~44% of its responses were unparseable.",
+    "Data table", tbl);
+}
+
+/* ---- 3 · flip rate ---- */
+function chartFlip(){
+  var rows = BD.flip_rate;
+  var dom0 = -1, dom1 = 0.3;
+  var barH = 24, gap = 14, topPad = 16;
+  var plotH = rows.length * (barH + gap) - gap;
+  var H = topPad + plotH + 36;
+  var PW = W - ML - MR;
+  function X(v){ return ML + (v - dom0) / (dom1 - dom0) * PW; }
+  var svg = sv("svg", {width:W, height:H, viewBox:"0 0 "+W+" "+H, role:"img",
+    "aria-label":"Diverging bar chart of signed flip rate per model"});
+  var ticks = [-1,-.75,-.5,-.25,0,.25];
+  ticks.forEach(function(t){
+    if (t !== 0) sv("line", {x1:X(t), y1:topPad-4, x2:X(t), y2:topPad+plotH+4, "class":"gl"}, svg);
+  });
+  sv("line", {x1:X(0), y1:topPad-4, x2:X(0), y2:topPad+plotH+4, "class":"axline"}, svg);
+  xAxis(svg, ML, ML+PW, topPad+plotH+6, dom0, dom1, ticks, function(t){ return (t>0?"+":"")+t; });
+
+  rows.forEach(function(r, i){
+    var y = topPad + i * (barH + gap);
+    var lbl = sv("text", {x:ML-10, y:y+barH/2+4, "text-anchor":"end", "class":"lbl"}, svg);
+    lbl.textContent = shortName(r.model);
+    var x0 = Math.min(X(0), X(r.flip)), x1 = Math.max(X(0), X(r.flip));
+    /* llama's cell-averaged flip in summary.md is +0.003 [−0.104, 0.153] - opposite sign to
+       the pooled value and crossing zero - so its direction is not established: neutral grey */
+    var isLlama = r.model === "meta-llama/llama-3.1-8b-instruct";
+    var bar = sv("rect", {x:x0, y:y, width:Math.max(2, x1-x0), height:barH, rx:4, "class":"fillc"}, svg);
+    bar.classList.add(isLlama ? "c-neutral" : (r.flip >= 0 ? "c-pos" : "c-neg"));
+    tip(bar, shortName(r.model) + " - flip rate " + (r.flip>0?"+":"") + r.flip.toFixed(3) +
+      " = KEEP(default_keep) " + pct(r.keep_default_keep) + " − KEEP(default_switch) " + pct(r.keep_default_switch) +
+      (isLlama
+        ? " · sign not established: the cell-averaged estimate is +0.003 [−0.104, 0.153] (summary.md), and ~44% of this model's responses were unparseable - excluded from headline claims"
+        : (r.flip >= 0 ? " · follows the default action" : " · takes the same action in both framings")));
+    var v = sv("text", {x: r.flip >= 0 ? x1+7 : x0-7, y:y+barH/2+4,
+      "text-anchor": r.flip >= 0 ? "start" : "end", "class":"vl"}, svg);
+    v.textContent = (r.flip>0?"+":"") + r.flip.toFixed(3);
+  });
+
+  var legend = [
+    {cls:"c-pos", label:"positive - keeps more when keeping is the default (follows the default)"},
+    {cls:"c-neg", label:"negative - keeps more when keeping requires an act (same action in both framings)"},
+    {cls:"c-neutral", label:"grey - sign not established (CI crosses zero)"}
+  ];
+  var tbl = buildTable(null,
+    ["Model","KEEP cond. (default_keep)","KEEP cond. (default_switch)","Flip rate"],
+    rows.map(function(r){
+      return [r.model, pct(r.keep_default_keep,2), pct(r.keep_default_switch,2),
+        (r.flip>0?"+":"")+r.flip.toFixed(4)];
+    }));
+
+  return makeFigure("3 · Flip rate",
+    "flip = conditional KEEP in default_keep − conditional KEEP in default_switch", legend, svg,
+    "Denominator: conditional - both KEEP rates use KEEP / (KEEP + SWITCH). The sign matters and the two colours mean opposite things: blue (positive) = the model follows whichever default the framing sets; red (negative) = it performs the same action regardless of framing. " +
+    "No confidence intervals are drawn: the 95% bootstrap intervals exist only in summary.md, computed on cell-averaged estimates that differ from the pooled rates shown here - for llama-3.1-8b they even differ in sign (cell-averaged +0.003 [−0.104, 0.153], indistinguishable from zero), so its bar is drawn in neutral grey and no direction should be read into it; llama-3.1-8b is in any case excluded from the project's headline claims (~44% unparseable). " +
+    "Pooled across the five models the estimate is −0.300 [−0.587, 0.023] - the interval crosses zero, i.e. there is no consistent population-level framing effect.",
+    "Data table", tbl);
+}
+
+/* ---- 4 · temperature lines ---- */
+var MARKERS = ["circle","square","triangle","diamond","cross"];
+function drawMarker(svg, shape, x, y, cls){
+  var m;
+  if (shape === "circle") m = sv("circle", {cx:x, cy:y, r:4.5, "class":"fillc"}, svg);
+  else if (shape === "square") m = sv("rect", {x:x-4, y:y-4, width:8, height:8, "class":"fillc"}, svg);
+  else if (shape === "triangle") m = sv("path", {d:"M"+x+" "+(y-5)+" L"+(x+5)+" "+(y+4)+" L"+(x-5)+" "+(y+4)+" Z", "class":"fillc"}, svg);
+  else if (shape === "diamond") m = sv("path", {d:"M"+x+" "+(y-5.5)+" L"+(x+5.5)+" "+y+" L"+x+" "+(y+5.5)+" L"+(x-5.5)+" "+y+" Z", "class":"fillc"}, svg);
+  else m = sv("path", {d:"M"+(x-4.5)+" "+(y-4.5)+" L"+(x+4.5)+" "+(y+4.5)+" M"+(x-4.5)+" "+(y+4.5)+" L"+(x+4.5)+" "+(y-4.5), "class":"strokec", "stroke-width":"2.5"}, svg);
+  m.classList.add(cls);
+  m.style.stroke = "var(--panel)";
+  if (shape !== "cross") m.style.strokeWidth = "1.5";
+  return m;
+}
+function lineChart(opts){
+  /* opts: {series:[{name, cls, marker, points:[{x,y,tipText}]}], dom:{x0,x1,y0,y1},
+            xticks, yticks, xfmt, yfmt, plotW, plotH, ml, mr, aria} */
+  var ml = opts.ml, mr = opts.mr, PW = opts.plotW, PH = opts.plotH, topPad = 14;
+  var Wd = ml + PW + mr, H = topPad + PH + 36;
+  var svg = sv("svg", {width:Wd, height:H, viewBox:"0 0 "+Wd+" "+H, role:"img", "aria-label":opts.aria});
+  function X(v){ return ml + (v - opts.dom.x0) / (opts.dom.x1 - opts.dom.x0) * PW; }
+  function Y(v){ return topPad + PH - (v - opts.dom.y0) / (opts.dom.y1 - opts.dom.y0) * PH; }
+  opts.yticks.forEach(function(t){
+    sv("line", {x1:ml, y1:Y(t), x2:ml+PW, y2:Y(t), "class": t===opts.dom.y0 ? "axline" : "gl"}, svg);
+    var txt = sv("text", {x:ml-8, y:Y(t)+4, "text-anchor":"end", "class":"ax"}, svg);
+    txt.textContent = opts.yfmt(t);
+  });
+  xAxis(svg, ml, ml+PW, topPad+PH, opts.dom.x0, opts.dom.x1, opts.xticks, opts.xfmt);
+  /* label collision avoidance at right edge */
+  var labels = opts.series.map(function(s){
+    var last = s.points[s.points.length-1];
+    return {s:s, y:Y(last.y)};
+  }).sort(function(a,b){ return a.y - b.y; });
+  for (var i=1;i<labels.length;i++){
+    if (labels[i].y - labels[i-1].y < 14) labels[i].y = labels[i-1].y + 14;
+  }
+  opts.series.forEach(function(s){
+    var d = s.points.map(function(p,i){ return (i?"L":"M") + X(p.x).toFixed(1) + " " + Y(p.y).toFixed(1); }).join(" ");
+    var path = sv("path", {d:d, "class":"strokec", "stroke-width":"2", fill:"none"}, svg);
+    path.classList.add(s.cls);
+    s.points.forEach(function(p){
+      drawMarker(svg, s.marker, X(p.x), Y(p.y), s.cls);
+      var hit = sv("circle", {cx:X(p.x), cy:Y(p.y), r:12, fill:"transparent"}, svg);
+      hit.style.pointerEvents = "all";
+      tip(hit, p.tipText);
+    });
+  });
+  labels.forEach(function(L){
+    var t = sv("text", {x:ml+PW+8, y:L.y+4, "class":"lbl", "font-size":"11.5"}, svg);
+    t.textContent = L.s.name;
+    t.style.fill = "var(--c)";
+    t.classList.add(L.s.cls);
+  });
+  return svg;
+}
+
+function chartTemperature(){
+  var temps = BD.meta.temperatures;
+  var series = BD.meta.models.map(function(m, i){
+    var pts = BD.by_model_temperature
+      .filter(function(r){ return r.model === m; })
+      .sort(function(a,b){ return a.temperature - b.temperature; })
+      .map(function(r){
+        return {x:r.temperature, y:r.keep_conditional,
+          tipText: shortName(m) + " · T=" + r.temperature + " - conditional KEEP " + pct(r.keep_conditional) +
+            " (" + r.KEEP + "K/" + r.SWITCH + "S; " + (r.n - r.KEEP - r.SWITCH) + " other/unparseable of " + r.n + ")"};
+      });
+    return {name:shortName(m), cls:MODEL_SLOT[m], marker:MARKERS[i], points:pts};
+  });
+  var svg = lineChart({
+    series:series, dom:{x0:0, x1:1.6, y0:0, y1:1},
+    xticks:temps, yticks:[0,.2,.4,.6,.8,1],
+    xfmt:function(t){ return String(t); }, yfmt:function(t){ return Math.round(t*100)+"%"; },
+    plotW:520, plotH:260, ml:64, mr:150,
+    aria:"Line chart of conditional KEEP rate versus temperature, one line per model"
+  });
+  var legend = BD.meta.models.map(function(m, i){
+    return {cls:MODEL_SLOT[m], label:shortName(m) + " (" + MARKERS[i] + ")", line:true};
+  });
+  var rows = [];
+  BD.by_model_temperature.forEach(function(r){
+    rows.push([r.model, r.temperature, r.KEEP, r.SWITCH, r.n - r.KEEP - r.SWITCH, r.n, pct(r.keep_conditional,2)]);
+  });
+  var tbl = buildTable(null, ["Model","T","KEEP","SWITCH","Other/unparseable","n","KEEP (conditional)"], rows);
+  return makeFigure("4 · Temperature",
+    "Conditional KEEP vs sampling temperature, per model", legend, svg,
+    "Denominator: conditional - KEEP / (KEEP + SWITCH) at each temperature, pooled over scenarios and personas (n≈400 responses per point, exact n in the table; markers differ per model so the lines are tellable apart without colour). " +
+    "Caution at T=1.6: for some models the conditional rate rests on very few parseable answers - llama-3.1-8b has only 8 KEEP-or-SWITCH responses out of 392 there, and granite 112 of 400 (see chart 5 and the table). llama-3.1-8b is excluded from the project's headline claims (~44% of its responses were unparseable).",
+    "Data table", tbl);
+}
+
+/* ---- 5 · coherence collapse (two panels, shared x) ---- */
+function chartCoherence(){
+  var rows = BD.by_temperature.slice().sort(function(a,b){ return a.temperature - b.temperature; });
+  var ml = 64, mr = 170, PW = 520, topPad = 16, PH1 = 190, gapP = 46, PH2 = 120;
+  var Wd = ml + PW + mr;
+  var H = topPad + PH1 + gapP + PH2 + 36;
+  var svg = sv("svg", {width:Wd, height:H, viewBox:"0 0 "+Wd+" "+H, role:"img",
+    "aria-label":"Two stacked panels sharing a temperature axis: shares of unparseable responses, token-cap hits and the conditional KEEP rate on top; median output tokens below"});
+  function X(v){ return ml + v/1.6 * PW; }
+  function Y1(v){ return topPad + PH1 - v * PH1; }
+  var y2max = 2000;
+  function Y2(v){ return topPad + PH1 + gapP + PH2 - (v / y2max) * PH2; }
+
+  /* top panel */
+  [0,.25,.5,.75,1].forEach(function(t){
+    sv("line", {x1:ml, y1:Y1(t), x2:ml+PW, y2:Y1(t), "class": t===0 ? "axline" : "gl"}, svg);
+    var txt = sv("text", {x:ml-8, y:Y1(t)+4, "text-anchor":"end", "class":"ax"}, svg);
+    txt.textContent = Math.round(t*100)+"%";
+  });
+  var topSeries = [
+    {key:"unp", name:"UNPARSEABLE share", cls:"c-s2", marker:"circle",
+     val:function(r){ return r.UNPARSEABLE / r.n; },
+     tipf:function(r,v){ return "T=" + r.temperature + " - " + r.UNPARSEABLE + " of " + r.n + " responses unparseable (" + pct(v) + ")"; }},
+    {key:"cap", name:"hit token cap", cls:"c-s3", marker:"square",
+     val:function(r){ return r.hit_token_cap; },
+     tipf:function(r,v){ return "T=" + r.temperature + " - " + pct(v) + " of responses hit the output-token cap"; }},
+    {key:"keep", name:"conditional KEEP", cls:"c-s1", marker:"triangle",
+     val:function(r){ return r.keep_conditional; },
+     tipf:function(r,v){ return "T=" + r.temperature + " - conditional KEEP " + pct(v) + " (" + r.KEEP + "K/" + r.SWITCH + "S)"; }}
+  ];
+  var endLabels = [];
+  topSeries.forEach(function(s){
+    var d = rows.map(function(r,i){ return (i?"L":"M") + X(r.temperature).toFixed(1) + " " + Y1(s.val(r)).toFixed(1); }).join(" ");
+    var p = sv("path", {d:d, "class":"strokec", "stroke-width":"2", fill:"none"}, svg);
+    p.classList.add(s.cls);
+    rows.forEach(function(r){
+      drawMarker(svg, s.marker, X(r.temperature), Y1(s.val(r)), s.cls);
+      var hit = sv("circle", {cx:X(r.temperature), cy:Y1(s.val(r)), r:12, fill:"transparent"}, svg);
+      hit.style.pointerEvents = "all";
+      tip(hit, s.tipf(r, s.val(r)));
+    });
+    endLabels.push({y:Y1(s.val(rows[rows.length-1])), name:s.name, cls:s.cls});
+  });
+  endLabels.sort(function(a,b){ return a.y-b.y; });
+  for (var i=1;i<endLabels.length;i++){
+    if (endLabels[i].y - endLabels[i-1].y < 14) endLabels[i].y = endLabels[i-1].y + 14;
+  }
+  endLabels.forEach(function(L){
+    var t = sv("text", {x:ml+PW+8, y:L.y+4, "class":"lbl", "font-size":"11.5"}, svg);
+    t.textContent = L.name; t.classList.add(L.cls); t.style.fill = "var(--c)";
+  });
+  var t1 = sv("text", {x:ml, y:topPad-3, "class":"axl"}, svg);
+  t1.textContent = "share of all responses (unconditional) · plus conditional KEEP";
+
+  /* bottom panel: median output tokens */
+  [0,500,1000,1500,2000].forEach(function(t){
+    sv("line", {x1:ml, y1:Y2(t), x2:ml+PW, y2:Y2(t), "class": t===0 ? "axline" : "gl"}, svg);
+    var txt = sv("text", {x:ml-8, y:Y2(t)+4, "text-anchor":"end", "class":"ax"}, svg);
+    txt.textContent = String(t);
+  });
+  var d2 = rows.map(function(r,i){ return (i?"L":"M") + X(r.temperature).toFixed(1) + " " + Y2(r.median_output_tokens).toFixed(1); }).join(" ");
+  var p2 = sv("path", {d:d2, "class":"strokec c-extra", "stroke-width":"2", fill:"none"}, svg);
+  rows.forEach(function(r){
+    drawMarker(svg, "diamond", X(r.temperature), Y2(r.median_output_tokens), "c-extra");
+    var hit = sv("circle", {cx:X(r.temperature), cy:Y2(r.median_output_tokens), r:12, fill:"transparent"}, svg);
+    hit.style.pointerEvents = "all";
+    tip(hit, "T=" + r.temperature + " - median output " + r.median_output_tokens + " tokens");
+  });
+  var lb2 = sv("text", {x:ml+PW+8, y:Y2(rows[rows.length-1].median_output_tokens)+4, "class":"lbl c-extra", "font-size":"11.5"}, svg);
+  lb2.textContent = "median output tokens"; lb2.style.fill = "var(--c)";
+  var t2 = sv("text", {x:ml, y:topPad+PH1+gapP-8, "class":"axl"}, svg);
+  t2.textContent = "median output tokens (own axis - different unit)";
+
+  xAxis(svg, ml, ml+PW, topPad+PH1+gapP+PH2, 0, 1.6, BD.meta.temperatures, function(t){ return String(t); });
+  var xt = sv("text", {x:ml+PW/2, y:H-2, "text-anchor":"middle", "class":"ax"}, svg);
+  xt.textContent = "temperature";
+
+  var legend = [
+    {cls:"c-s2", label:"UNPARSEABLE share (circle)", line:true},
+    {cls:"c-s3", label:"hit token cap (square)", line:true},
+    {cls:"c-s1", label:"conditional KEEP (triangle)", line:true},
+    {cls:"c-extra", label:"median output tokens, lower panel (diamond)", line:true}
+  ];
+  var tbl = buildTable(null,
+    ["T","UNPARSEABLE","n","UNPARSEABLE share","hit token cap","median output tokens","KEEP (conditional)"],
+    rows.map(function(r){
+      return [r.temperature, r.UNPARSEABLE, r.n, pct(r.UNPARSEABLE/r.n,2), pct(r.hit_token_cap,2),
+        r.median_output_tokens, pct(r.keep_conditional,2)];
+    }), 0);
+  return makeFigure("5 · Coherence collapse",
+    "What actually happens as temperature rises (all five models pooled)", legend, svg,
+    "Top panel, unconditional denominators: UNPARSEABLE share and token-cap share are fractions of ALL responses at that temperature (n≈2,000 per point). The conditional KEEP rate (KEEP / (KEEP + SWITCH)) is plotted alongside them and stays in a narrow 47–54% band across the whole range - the answer rate looks stable. " +
+    "Bottom panel (own axis, different unit): median output tokens. Above T=1.2 the output degenerates: at T=1.6, 43.4% of responses are unparseable, 49.5% hit the token cap, and the median response balloons from ~193 to ~1,890 tokens. A stable-looking KEEP rate is hiding a collapse in coherence. The pool includes llama-3.1-8b (excluded from headline claims elsewhere), which contributes 868 of the 1,415 unparseable responses.",
+    "Data table", tbl);
+}
+
+/* ---- 6 · reasoning depth by persona ---- */
+function chartDepth(){
+  var CODES = [
+    {k:"L0", cls:"c-d0"}, {k:"L1", cls:"c-d1"}, {k:"L2", cls:"c-d2"}, {k:"L3", cls:"c-d3"},
+    {k:"MIX", cls:"c-dmix"}, {k:"NON", cls:"c-dnon"}
+  ];
+  var rows = BD.depth_by_persona;
+  var barH = 30, gap = 20, topPad = 14;
+  var plotH = rows.length * (barH + gap) - gap;
+  var H = topPad + plotH + 34;
+  var ML2 = 190, PW = W - ML2 - 30;
+  var svg = sv("svg", {width:W, height:H, viewBox:"0 0 "+W+" "+H, role:"img",
+    "aria-label":"Stacked bar chart of reasoning-depth code shares per persona"});
+  var ticks = [0,.25,.5,.75,1];
+  grid(svg, ML2, ML2+PW, topPad-4, topPad+plotH+4, 0, 1, ticks);
+  xAxis(svg, ML2, ML2+PW, topPad+plotH+6, 0, 1, ticks, function(t){ return Math.round(t*100)+"%"; });
+
+  rows.forEach(function(r, i){
+    var y = topPad + i * (barH + gap);
+    var lbl = sv("text", {x:ML2-10, y:y+barH/2-2, "text-anchor":"end", "class":"lbl"}, svg);
+    lbl.textContent = (BD.meta.persona_labels[r.persona] || r.persona)
+      .split(" (")[0].split(" - ")[0].split(",")[0];
+    var sub = sv("text", {x:ML2-10, y:y+barH/2+12, "text-anchor":"end", "class":"ax"}, svg);
+    sub.textContent = r.persona + " · n=" + r.n;
+    var x = ML2;
+    CODES.forEach(function(c){
+      var share = r[c.k];
+      var w = share * PW;
+      if (w <= 0) return;
+      var rect = sv("rect", {x:x, y:y, width:Math.max(1, w-2), height:barH, rx:2, "class":"fillc"}, svg);
+      rect.classList.add(c.cls);
+      tip(rect, r.persona + " - " + c.k + ": " + pct(share) + " of coded responses (n=" + r.n + ")");
+      if (w > 44){
+        var v = sv("text", {x:x+w/2-1, y:y+barH/2+4, "text-anchor":"middle", "class":"vl"}, svg);
+        v.textContent = c.k + " " + pct(share, 0);
+        v.setAttribute("data-oncolor", c.cls);
+      }
+      x += w;
+    });
+  });
+
+  var legend = CODES.map(function(c){
+    var desc = {L0:"L0 - no model of the opponent", L1:"L1 - models him once",
+      L2:"L2 - models him modelling you", L3:"L3 - sees the infinite regress",
+      MIX:"MIX - names randomisation as the solution", NON:"NON - disputes premise / non-strategic"}[c.k];
+    return {cls:c.cls, label:desc};
+  });
+  var tbl = buildTable(null, ["Persona","L0","L1","L2","L3","MIX","NON","n"],
+    rows.map(function(r){
+      return [r.persona, pct(r.L0), pct(r.L1), pct(r.L2), pct(r.L3), pct(r.MIX), pct(r.NON), r.n];
+    }));
+  return makeFigure("6 · Reasoning depth by persona",
+    "Distribution of opponent-modelling depth codes, per system prompt", legend, svg,
+    "Denominator: all coded chain-of-thought responses for that persona (n≈2,000 each; a response whose annotation could not be parsed is coded NON). L0→L3 are ordinal - one hue, darker = deeper - while MIX and NON are qualitatively different and drawn in neutral greys. " +
+    "Models marked excluded_from_pooled in the data are left out of these pooled shares: qwen3-30b emits no visible reasoning to code (summary.md: contracts.NO_COT_MODELS), so its depth codes carry no information; its per-model row is in data.json's depth_by_model only.",
+    "Data table", tbl);
+}
+
+/* ---- 7 · determinism ---- */
+function chartDeterminism(){
+  var rows = BD.determinism.slice().sort(function(a,b){ return b.share - a.share; });
+  var barH = 24, gap = 14, topPad = 14;
+  var plotH = rows.length * (barH + gap) - gap;
+  var H = topPad + plotH + 34;
+  var PW = W - ML - MR;
+  var svg = sv("svg", {width:W, height:H, viewBox:"0 0 "+W+" "+H, role:"img",
+    "aria-label":"Bar chart of the share of cells in which all 25 replicates agreed, per model"});
+  var ticks = [0,.2,.4,.6,.8,1];
+  grid(svg, ML, ML+PW, topPad-4, topPad+plotH+4, 0, 1, ticks);
+  xAxis(svg, ML, ML+PW, topPad+plotH+6, 0, 1, ticks, function(t){ return Math.round(t*100)+"%"; });
+  rows.forEach(function(r, i){
+    var y = topPad + i * (barH + gap);
+    var lbl = sv("text", {x:ML-10, y:y+barH/2+4, "text-anchor":"end", "class":"lbl"}, svg);
+    lbl.textContent = shortName(r.model);
+    var w = Math.max(2, r.share * PW);
+    var bar = sv("rect", {x:ML, y:y, width:w, height:barH, rx:4, "class":"fillc c-s1"}, svg);
+    tip(bar, shortName(r.model) + " - " + r.unanimous_cells + " of " + r.cells +
+      " cells unanimous (" + pct(r.share) + ")");
+    var v = sv("text", {x:ML+w+7, y:y+barH/2+4, "class":"vl"}, svg);
+    v.textContent = pct(r.share);
+  });
+  var tbl = buildTable(null, ["Model","Unanimous cells","Cells","Share"],
+    rows.map(function(r){ return [r.model, r.unanimous_cells, r.cells, pct(r.share,2)]; }));
+  return makeFigure("7 · Determinism",
+    "Share of cells where all 25 replicates gave the same answer", null, svg,
+    "Denominator: that model's evaluable (scenario × persona × temperature) cells - between 49 and 80 of the 80 possible, see the table - not individual responses. A cell counts as unanimous when all 25 replicates produced the same answer. The 49-cell denominator is llama-3.1-8b's, which is excluded from the project's headline claims (~44% of its responses were unparseable). qwen3-30b was unanimous in 70% of its cells: near-deterministic behaviour, matching the writeup's ‘weak models do the opposite of humans almost deterministically’.",
+    "Data table", tbl);
+}
+
+/* ---- PNG gallery ---- */
+var FIGURES = [
+  {f:"keep_vs_temperature.png",   d:"conditional - matches the analytic curve"},
+  {f:"flip_rate.png",             d:"bars unconditional; flip rate conditional"},
+  {f:"depth_by_persona.png",      d:"unconditional"},
+  {f:"nonbinary_by_temperature.png", d:"unconditional"},
+  {f:"answers_by_role.png",       d:"unconditional - other answers shown, not dropped"},
+  {f:"keep_by_temperature.png",   d:"conditional - same denominator as plot 1"}
+];
+function renderFigures(){
+  var mount = $("figures");
+  FIGURES.forEach(function(fg){
+    var f = el("figure");
+    var img = el("img");
+    img.src = fg.f;
+    img.alt = "Pre-rendered analysis figure " + fg.f;
+    img.loading = "lazy";
+    f.appendChild(img);
+    var cap = el("figcaption");
+    var code = el("code", "", fg.f);
+    cap.appendChild(code);
+    cap.appendChild(document.createTextNode(" - " + fg.d));
+    f.appendChild(cap);
+    mount.appendChild(f);
+  });
+}
+
+function renderCharts(){
+  var mount = $("charts");
+  [chartLadder, chartFraming, chartFlip, chartTemperature, chartCoherence, chartDepth, chartDeterminism]
+    .forEach(function(fn){ mount.appendChild(fn()); });
+  fixOnColorLabels();
+  if (window.matchMedia){
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fixOnColorLabels);
+  }
+}
+
+/* pick black/white for in-segment labels from the segment colour's real luminance,
+   so they stay readable in both themes */
+function fixOnColorLabels(){
+  var cache = {};
+  function onColor(cls){
+    if (cache[cls]) return cache[cls];
+    var probe = el("div", cls);
+    probe.style.display = "none";
+    document.body.appendChild(probe);
+    var hex = getComputedStyle(probe).getPropertyValue("--c").trim();
+    document.body.removeChild(probe);
+    var m = /^#([0-9a-f]{6})$/i.exec(hex);
+    var lum = 0.5;
+    if (m){
+      var n = parseInt(m[1], 16);
+      var r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+      lum = 0.2126*r + 0.7152*g + 0.0722*b;
+    }
+    return (cache[cls] = lum > 0.5 ? "#111111" : "#ffffff");
+  }
+  document.querySelectorAll("text[data-oncolor]").forEach(function(t){
+    t.style.fill = onColor(t.getAttribute("data-oncolor"));
+  });
+}
+
+/* =====================================================================
+   WRITEUP model-comparison table
+   ===================================================================== */
+function renderWriteupTable(){
+  var mount = $("writeup-model-table");
+  var order = BD.by_model_scenario
+    .filter(function(r){ return r.scenario === "default_keep"; })
+    .slice().sort(function(a,b){ return b.keep_conditional - a.keep_conditional; })
+    .map(function(r){ return r.model; });
+  var rows = order.map(function(m){
+    var dk = BD.by_model_scenario.find(function(r){ return r.model===m && r.scenario==="default_keep"; });
+    var ds = BD.by_model_scenario.find(function(r){ return r.model===m && r.scenario==="default_switch"; });
+    var fl = BD.flip_rate.find(function(r){ return r.model===m; });
+    var note = m === "meta-llama/llama-3.1-8b-instruct"
+      ? "excluded from headline claims - ~44% unparseable" : "";
+    return [shortName(m), TIER[m] || "", pct(dk.keep_conditional), pct(ds.keep_conditional),
+      (fl.flip>0?"+":"")+fl.flip.toFixed(3), pct(unparseableShare(m)), note];
+  });
+  rows.push(["humans (one-on-one, time to think)", "-", "≈" + BD.human_data.main.keep_pct + "%",
+    "-", "-", "-",
+    "approximate; n≈" + BD.human_data.main.n + ", collected over ~18 months, sample skews young (15–25) & mathematically able; replicated at 80% and 95% by two other askers"]);
+  rows.push([BD.informal_frontier.model, "frontier", BD.informal_frontier.keep_pct + "%",
+    "-", "-", "-", "n=" + BD.informal_frontier.n + ", informal - not part of the main run"]);
+  mount.appendChild(buildTable(null,
+    ["Model","Tier","KEEP cond. (default_keep)","KEEP cond. (default_switch)","Flip rate","UNPARSEABLE share","Notes"],
+    rows, 2));
+}
+
+/* =====================================================================
+   PROMPTS SECTION
+   ===================================================================== */
+function copyButton(getText){
+  var b = el("button", "mini copy", "copy");
+  b.addEventListener("click", function(){
+    var text = getText();
+    function done(){ b.textContent = "copied ✓"; setTimeout(function(){ b.textContent = "copy"; }, 1400); }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){ fallback(); });
+    } else fallback();
+    function fallback(){
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch(e){}
+      document.body.removeChild(ta);
+    }
+  });
+  return b;
+}
+function promptBlock(text){
+  var box = el("div", "promptblock");
+  var pre = el("pre", "", text);
+  box.appendChild(pre);
+  box.appendChild(copyButton(function(){ return text; }));
+  return box;
+}
+function renderPrompts(){
+  var mount = $("prompts-mount");
+
+  /* the known contradiction - prominently, first */
+  var bad = el("div", "bad");
+  bad.appendChild(el("b", "", "Known contradiction (disclosed by the author): "));
+  bad.appendChild(document.createTextNode(PR.notes.known_contradiction));
+  mount.appendChild(bad);
+
+  var card;
+
+  /* scenarios */
+  card = el("div", "card");
+  card.appendChild(el("h3", "", "Scenarios (user prompts)"));
+  card.appendChild(el("p", "hint",
+    "The four grid scenarios plus the isomorph (a tea-cup rephrasing; it has no partner scenario and no flip rate). Every response was collected with exactly this text."));
+  Object.keys(PR.scenarios).forEach(function(k){
+    var h = el("h4", "", k);
+    h.style.cssText = "font-family:var(--mono);font-size:13px;margin:16px 0 4px";
+    card.appendChild(h);
+    var lbl = BD.meta.scenario_labels && BD.meta.scenario_labels[k];
+    if (lbl) card.appendChild(el("p", "hint", lbl));
+    card.appendChild(promptBlock(PR.scenarios[k]));
+  });
+  card.appendChild(el("p", "hint", "Note from prompts.json - randomise clause: " + PR.notes.randomise_clause +
+    " · Answer format: " + PR.notes.answer_format));
+  mount.appendChild(card);
+
+  /* direct mode */
+  card = el("div", "card");
+  card.appendChild(el("h3", "", "Direct mode - final line per scenario"));
+  card.appendChild(el("p", "hint", "In direct mode the single-line KEEP/SWITCH instruction is replaced by this one, and the answer is read from token logprobs (80 records)."));
+  var rows = Object.keys(PR.direct_mode_final_line).map(function(k){
+    return [k, PR.direct_mode_final_line[k]];
+  });
+  card.appendChild(buildTable(null, ["Scenario", "Final line"], rows, 99));
+  mount.appendChild(card);
+
+  /* personas */
+  card = el("div", "card");
+  card.appendChild(el("h3", "", "Personas (system prompts)"));
+  Object.keys(PR.personas).forEach(function(k){
+    var h = el("h4", "", k + (BD.meta.persona_labels && BD.meta.persona_labels[k] ? " - " + BD.meta.persona_labels[k] : ""));
+    h.style.cssText = "font-size:13px;margin:16px 0 4px";
+    card.appendChild(h);
+    card.appendChild(promptBlock(PR.personas[k]));
+  });
+  card.appendChild(el("h4", "", "Playground-only personas"));
+  Object.keys(PR.playground_only_personas).forEach(function(k){
+    var h = el("h4", "", k);
+    h.style.cssText = "font-family:var(--mono);font-size:13px;margin:16px 0 4px";
+    card.appendChild(h);
+    card.appendChild(promptBlock(PR.playground_only_personas[k]));
+  });
+  mount.appendChild(card);
+
+  /* depth rubric */
+  card = el("div", "card");
+  card.appendChild(el("h3", "", "Depth rubric"));
+  card.appendChild(el("p", "hint", "How each response's opponent-modelling depth was coded (by the annotator model)."));
+  card.appendChild(promptBlock(PR.depth_rubric));
+  mount.appendChild(card);
+
+  /* annotation prompt */
+  card = el("div", "card");
+  card.appendChild(el("h3", "", "Annotation prompt template"));
+  card.appendChild(el("p", "hint", "Sent to the annotator model (deepseek/deepseek-v3.2) for every chain-of-thought response; {response_text} is replaced by the response."));
+  card.appendChild(promptBlock(PR.annotation_prompt_template));
+  mount.appendChild(card);
+
+  /* contamination question */
+  card = el("div", "card");
+  card.appendChild(el("h3", "", "Contamination question"));
+  card.appendChild(el("p", "hint", "Asked to check whether models recognise the scenario's fictional source (20 records)."));
+  card.appendChild(promptBlock(PR.contamination_question));
+  mount.appendChild(card);
+
+  /* models */
+  card = el("div", "card");
+  card.appendChild(el("h3", "", "Models"));
+  var mrows = MD.models.map(function(m){
+    return [m.id, m.tier, m.role, MD.provider_pins[m.id] || "-"];
+  });
+  card.appendChild(buildTable(null, ["Model", "Tier", "Role", "Pinned provider"], mrows, 99));
+  card.appendChild(el("p", "hint", MD.notes));
+  var h4 = el("h4", "", "Extra playground models (prices per 1M tokens, USD)");
+  h4.style.cssText = "font-size:13px;margin:16px 0 4px";
+  card.appendChild(h4);
+  var prows = MD.playground_extra_models.map(function(m){
+    return [m.id, m.tier, "$" + m.in.toFixed(3), "$" + m.out.toFixed(2)];
+  });
+  card.appendChild(buildTable(null, ["Model", "Tier", "Input", "Output"], prows, 2));
+  mount.appendChild(card);
+}
+
+/* =====================================================================
+   PLAYGROUND
+   ===================================================================== */
+/* Answer extraction - ported unchanged from the local playground / server.
+   The published numbers were extracted with this same rule, so a run here is
+   directly comparable to the figures on this page. Do not modify. */
+function quickAnswer(text){
+  if(!text || !text.trim()) return "EMPTY";
+  const lines = text.trim().split("\n").map(l=>l.trim()).filter(Boolean);
+  const last = lines[lines.length-1].replace(/^[\s*#>_`-]+|[\s*#>_`.!:;,"']+$/g,"").toUpperCase();
+  if(last === "KEEP" || last === "SWITCH") return last;
+  const up = text.toUpperCase();
+  const hasK = /\bKEEP\b/.test(up), hasS = /\bSWITCH\b/.test(up);
+  if(hasK !== hasS) return (hasK ? "KEEP" : "SWITCH") + "*";
+  return "UNCLEAR";
+}
+function pillClass(a){
+  if (a === "KEEP" || a === "KEEP*") return "k";
+  if (a === "SWITCH" || a === "SWITCH*") return "s";
+  return "o";
+}
+
+var pg = { key:"", running:false, stop:false, prices:null, priceState:"idle" };
+var REP_CAP = 10;
+
+/* Cost ceilings need a price for the selected model. Bundled prices (models.json)
+   cover only the extra playground models, so the live public price list is fetched
+   from OpenRouter (no key attached - connect-src already allows this host) and the
+   bundled values serve as fallback. Run stays disabled while no price is known. */
+var BUNDLED_PRICES = {};
+if (MD) MD.playground_extra_models.forEach(function(m){ BUNDLED_PRICES[m.id] = {in:m.in, out:m.out}; });
+function priceFor(model){
+  return (pg.prices && pg.prices[model]) || BUNDLED_PRICES[model] || null;
+}
+function fetchPrices(done){
+  if (pg.priceState === "loading" || pg.priceState === "done") return;
+  pg.priceState = "loading";
+  fetch("https://openrouter.ai/api/v1/models")
+    .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(j){
+      var map = {};
+      (j.data || []).forEach(function(m){
+        if (m && m.id && m.pricing){
+          /* OpenRouter pricing is $/token as strings; convert to $/1M tokens */
+          var pin = parseFloat(m.pricing.prompt), pout = parseFloat(m.pricing.completion);
+          if (isFinite(pin) && isFinite(pout)) map[m.id] = { in: pin * 1e6, out: pout * 1e6 };
+        }
+      });
+      pg.prices = map; pg.priceState = "done"; done();
+    })
+    .catch(function(){ pg.priceState = "failed"; done(); });
+}
+
+function buildPlayground(){
+  var app = $("pg-app");
+  var cols = el("div", "cols");
+
+  /* ---- left column: key + controls ---- */
+  var form = el("div", "card");
+
+  var keyLbl = el("label", "", "OpenRouter API key");
+  keyLbl.htmlFor = "pg-key";
+  form.appendChild(keyLbl);
+  var keyRow = el("div");
+  keyRow.style.cssText = "display:flex;gap:8px";
+  var keyIn = el("input");
+  keyIn.type = "password"; keyIn.id = "pg-key";
+  keyIn.autocomplete = "off"; keyIn.spellcheck = false;
+  keyIn.placeholder = "sk-or-v1-… (spend-limited key recommended)";
+  var clearBtn = el("button", "mini", "clear key");
+  clearBtn.type = "button";
+  clearBtn.style.flexShrink = "0";
+  keyRow.appendChild(keyIn); keyRow.appendChild(clearBtn);
+  form.appendChild(keyRow);
+  var keyHint = el("p", "hint",
+    "Sent only to https://openrouter.ai, directly from this browser tab. Never stored - a reload forgets it. " +
+    "Use a key with a small credit limit (set one when creating the key on OpenRouter).");
+  form.appendChild(keyHint);
+
+  var modelLbl = el("label", "", "Model"); modelLbl.htmlFor = "pg-model";
+  form.appendChild(modelLbl);
+  var modelSel = el("select"); modelSel.id = "pg-model";
+  var seen = {};
+  MD.models.filter(function(m){ return m.role === "subject"; }).forEach(function(m){
+    seen[m.id] = 1;
+    var o = el("option", "", m.id + "  (" + m.tier + ", grid subject)"); o.value = m.id;
+    modelSel.appendChild(o);
+  });
+  MD.playground_extra_models.forEach(function(m){
+    if (seen[m.id]) return; seen[m.id] = 1;
+    var o = el("option", "", m.id + "  (" + m.tier + ")"); o.value = m.id;
+    modelSel.appendChild(o);
+  });
+  var oc = el("option", "", "custom model id…"); oc.value = "__custom__";
+  modelSel.appendChild(oc);
+  form.appendChild(modelSel);
+  var customIn = el("input");
+  customIn.type = "text"; customIn.placeholder = "vendor/model-id"; customIn.hidden = true;
+  customIn.autocomplete = "off"; customIn.spellcheck = false;
+  customIn.style.marginTop = "6px";
+  form.appendChild(customIn);
+  var pinHint = el("p", "hint", "");
+  form.appendChild(pinHint);
+
+  var scenLbl = el("label", "", "Scenario (editable)"); scenLbl.htmlFor = "pg-scen";
+  form.appendChild(scenLbl);
+  var scenSel = el("select"); scenSel.id = "pg-scen";
+  Object.keys(PR.scenarios).forEach(function(k){
+    var o = el("option", "", k); o.value = k; scenSel.appendChild(o);
+  });
+  form.appendChild(scenSel);
+  var scenTa = el("textarea"); scenTa.rows = 9; scenTa.value = PR.scenarios[scenSel.value];
+  scenTa.style.marginTop = "6px";
+  form.appendChild(scenTa);
+
+  var persLbl = el("label", "", "System prompt / persona (editable)"); persLbl.htmlFor = "pg-pers";
+  form.appendChild(persLbl);
+  var persSel = el("select"); persSel.id = "pg-pers";
+  Object.keys(PR.personas).forEach(function(k){
+    var o = el("option", "", k); o.value = k; persSel.appendChild(o);
+  });
+  Object.keys(PR.playground_only_personas).forEach(function(k){
+    var o = el("option", "", k + " (playground only)"); o.value = "pg:" + k; persSel.appendChild(o);
+  });
+  form.appendChild(persSel);
+  var persTa = el("textarea"); persTa.rows = 4;
+  persTa.placeholder = "(empty = no system message)";
+  persTa.value = "";
+  persTa.style.marginTop = "6px";
+  form.appendChild(persTa);
+
+  var r3 = el("div", "row3");
+  function numField(labelText, id, value, min, max, step){
+    var box = el("div");
+    var l = el("label", "", labelText); l.htmlFor = id;
+    var inp = el("input"); inp.type = "number"; inp.id = id;
+    inp.value = value; inp.min = min; inp.max = max; inp.step = step;
+    box.appendChild(l); box.appendChild(inp);
+    r3.appendChild(box);
+    return inp;
+  }
+  var tempIn = numField("Temperature", "pg-temp", "0.8", "0", "2", "0.1");
+  var tokIn  = numField("Max tokens", "pg-tok", "1000", "16", "4000", "1");
+  var repIn  = numField("Replicates (max " + REP_CAP + ")", "pg-rep", "5", "1", String(REP_CAP), "1");
+  form.appendChild(r3);
+
+  var costLine = el("p", "hint", "");
+  costLine.id = "pg-cost";
+  form.appendChild(costLine);
+
+  var runBtn = el("button", "go", "Run");
+  runBtn.type = "button";
+  form.appendChild(runBtn);
+  var stopBtn = el("button", "mini", "stop after current call");
+  stopBtn.type = "button"; stopBtn.hidden = true; stopBtn.style.marginTop = "8px";
+  form.appendChild(stopBtn);
+  var errBox = el("div", "bad"); errBox.hidden = true;
+  form.appendChild(errBox);
+
+  /* ---- right column: chart + responses ---- */
+  var out = el("div", "card");
+  var chartTitle = el("h3", "", "Batch result");
+  chartTitle.style.cssText = "margin:0 0 10px;font-size:15px";
+  out.appendChild(chartTitle);
+  var chart = el("div", "bars"); chart.id = "pg-chart";
+  out.appendChild(chart);
+  var chartNote = el("p", "hint", ""); chartNote.id = "pg-chart-note";
+  out.appendChild(chartNote);
+  var results = el("div"); results.id = "pg-results";
+  results.appendChild(el("div", "empty", "No playground runs yet. Configure one and hit Run."));
+  out.appendChild(results);
+
+  cols.appendChild(form); cols.appendChild(out);
+  app.appendChild(cols);
+
+  /* ---- behaviour ---- */
+  function currentModel(){
+    return modelSel.value === "__custom__" ? customIn.value.trim() : modelSel.value;
+  }
+  function updatePin(){
+    var pin = MD.provider_pins[currentModel()];
+    pinHint.textContent = pin
+      ? "This model is pinned to provider “" + pin + "”, as in the grid run, for comparability."
+      : "No provider pin for this model (the grid pinned each subject to one provider).";
+  }
+  /* One shared clamp for max_tokens: the ceiling shown and the value sent must
+     be computed from exactly the same number. */
+  function maxTok(){ return Math.max(16, Math.min(4000, parseInt(tokIn.value, 10) || 1000)); }
+  function updateCost(){
+    var n = Math.min(REP_CAP, Math.max(1, parseInt(repIn.value, 10) || 0));
+    var maxtok = maxTok();
+    var inTok = Math.ceil((scenTa.value.length + persTa.value.length) / 4) + 20;
+    var p = priceFor(currentModel());
+    var money;
+    if (p){
+      /* Ceiling, not an estimate: assumes every call runs to max_tokens. */
+      var hi = n * (inTok * p.in + maxtok * p.out) / 1e6;
+      money = "up to $" + hi.toFixed(hi < 0.01 ? 4 : 2) + " if every call runs to the cap" +
+        (pg.prices && pg.prices[currentModel()] ? " (live price from openrouter.ai)" : " (bundled price)");
+    } else if (pg.priceState === "loading"){
+      money = "fetching the live price list from openrouter.ai…";
+    } else if (pg.priceState === "failed"){
+      money = "the live price list could not be fetched and no bundled price exists - Run stays disabled without a cost ceiling";
+    } else {
+      money = "no price known for this model - Run stays disabled without a cost ceiling";
+    }
+    costLine.textContent = n + " call" + (n === 1 ? "" : "s") + " · ~" + inTok +
+      " input tokens each · up to " + maxtok + " output tokens each · " + money +
+      " · responses stay in this tab, nothing is uploaded or saved";
+    var repsRaw = parseInt(repIn.value, 10) || 0;
+    runBtn.disabled = pg.running || !pg.key || repsRaw < 1 || repsRaw > REP_CAP || !p;
+    runBtn.textContent = pg.running ? "Running…"
+      : !pg.key ? "Run (enter an API key first)"
+      : repsRaw > REP_CAP ? "Run (max " + REP_CAP + " replicates)"
+      : !p ? "Run (waiting for a cost ceiling for this model)" : "Run";
+  }
+  keyIn.addEventListener("input", function(){ pg.key = keyIn.value.trim(); updateCost(); });
+  clearBtn.addEventListener("click", function(){
+    pg.key = ""; keyIn.value = ""; updateCost(); keyIn.focus();
+  });
+  modelSel.addEventListener("change", function(){
+    customIn.hidden = modelSel.value !== "__custom__";
+    updatePin(); updateCost();
+  });
+  customIn.addEventListener("input", function(){ updatePin(); updateCost(); });
+  scenSel.addEventListener("change", function(){ scenTa.value = PR.scenarios[scenSel.value]; updateCost(); });
+  persSel.addEventListener("change", function(){
+    var v = persSel.value;
+    if (v === "none"){ persTa.value = ""; }
+    else if (v.indexOf("pg:") === 0){ persTa.value = PR.playground_only_personas[v.slice(3)]; }
+    else { persTa.value = PR.personas[v]; }
+    updateCost();
+  });
+  [scenTa, persTa, tempIn, tokIn, repIn].forEach(function(x){
+    x.addEventListener("input", updateCost);
+  });
+  stopBtn.addEventListener("click", function(){ pg.stop = true; stopBtn.textContent = "stopping…"; });
+
+  function renderBatch(rows, cfg){
+    /* bar chart of quick-extracted answers (DOM only - model output is untrusted) */
+    chart.textContent = "";
+    var counts = {};
+    rows.forEach(function(r){ counts[r.answer] = (counts[r.answer] || 0) + 1; });
+    var entries = Object.keys(counts).map(function(k){ return [k, counts[k]]; })
+      .sort(function(a,b){ return b[1] - a[1]; });
+    var max = entries.length ? entries[0][1] : 1;
+    entries.forEach(function(e){
+      var bar = el("div", "bar");
+      bar.appendChild(el("i", "", e[0]));
+      var t = el("div", "t " + pillClass(e[0]));
+      t.style.width = Math.max(2, 100 * e[1] / max) + "%";
+      bar.appendChild(t);
+      bar.appendChild(el("b", "", String(e[1])));
+      chart.appendChild(bar);
+    });
+    var provs = [];
+    rows.forEach(function(r){ if (r.provider && provs.indexOf(r.provider) < 0) provs.push(r.provider); });
+    var note = rows.length + " call" + (rows.length === 1 ? "" : "s") + " · " + cfg.model +
+      " · T=" + cfg.temperature + " · max " + cfg.max_tokens + " tok · quick extract (last line; * = answer buried mid-text)";
+    if (provs.length > 1) note += " · SPLIT ACROSS " + provs.length + " PROVIDERS (" + provs.join(", ") + ") - these are not one distribution";
+    else if (provs.length === 1) note += " · provider: " + provs[0];
+    chartNote.textContent = note;
+
+    results.textContent = "";
+    rows.forEach(function(r, i){
+      var card = el("div", "resp");
+      var meta = el("div", "meta");
+      var pill = el("span", "pill " + pillClass(r.answer), r.answer);
+      meta.appendChild(pill);
+      meta.appendChild(el("span", "", cfg.model));
+      meta.appendChild(el("span", "", "T=" + cfg.temperature));
+      meta.appendChild(el("span", "", "rep " + (i + 1)));
+      if (r.provider) meta.appendChild(el("span", "", r.provider));
+      meta.appendChild(el("span", "", (r.tokens != null ? r.tokens : "?") + "/" + cfg.max_tokens + " tok"));
+      if (r.reasoning) {
+        var rp = el("span", "pill", r.reasoning + " hidden reasoning chars");
+        rp.title = "hidden trace in message.reasoning - quickAnswer never sees this";
+        meta.appendChild(rp);
+      }
+      if (r.finish === "length"){
+        var tp = el("span", "pill", "truncated");
+        tp.style.color = "var(--switch)";
+        meta.appendChild(tp);
+      }
+      card.appendChild(meta);
+      var txt = el("div", "txt", r.text || "(empty)");
+      if ((r.text || "").length < 260) txt.classList.add("open");
+      txt.addEventListener("click", function(){ txt.classList.toggle("open"); });
+      card.appendChild(txt);
+      results.appendChild(card);
+    });
+  }
+
+  async function run(){
+    if (pg.running || !pg.key) return;
+    var model = currentModel();
+    if (!model){ errBox.hidden = false; errBox.textContent = "Enter a model id first."; return; }
+    var reps = parseInt(repIn.value, 10) || 0;
+    if (reps < 1 || reps > REP_CAP){
+      errBox.hidden = false;
+      errBox.textContent = "Replicates must be between 1 and " + REP_CAP + " - refusing to run a larger batch.";
+      return;
+    }
+    if (!priceFor(model)){
+      errBox.hidden = false;
+      errBox.textContent = "No cost ceiling is known for this model yet - refusing to run.";
+      return;
+    }
+    var cfg = {
+      model: model,
+      temperature: Math.max(0, Math.min(2, parseFloat(tempIn.value) || 0)),
+      max_tokens: maxTok()
+    };
+    errBox.hidden = true;
+    pg.running = true; pg.stop = false;
+    stopBtn.hidden = false; stopBtn.textContent = "stop after current call";
+    updateCost();
+    var rows = [];
+    var messages = [];
+    if (persTa.value.trim()) messages.push({ role: "system", content: persTa.value });
+    messages.push({ role: "user", content: scenTa.value });
+    var body = { model: model, messages: messages, temperature: cfg.temperature, max_tokens: cfg.max_tokens };
+    var pin = MD.provider_pins[model];
+    if (pin) body.provider = { order: [pin], allow_fallbacks: false };
+
+    for (var i = 0; i < reps && !pg.stop; i++){
+      chartNote.textContent = "running call " + (i + 1) + " of " + reps + "…";
+      try {
+        var res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + pg.key, "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        var raw = await res.text();
+        var j = null;
+        try { j = JSON.parse(raw); } catch (e) {}
+        if (!res.ok || !j || j.error){
+          var msg = (j && j.error && j.error.message) ? j.error.message : raw.slice(0, 400);
+          rows.push({ answer: "ERROR", text: "HTTP " + res.status + ": " + msg });
+        } else {
+          var ch = (j.choices && j.choices[0]) || {};
+          var text = (ch.message && ch.message.content) || "";
+          rows.push({
+            answer: quickAnswer(text),
+            text: text,
+            provider: j.provider || "",
+            tokens: j.usage ? j.usage.completion_tokens : null,
+            finish: ch.finish_reason,
+            reasoning: (ch.message && ch.message.reasoning) ? String(ch.message.reasoning).length : 0
+          });
+        }
+      } catch (err) {
+        rows.push({ answer: "ERROR", text: "Network error: " + String(err && err.message || err) });
+      }
+      renderBatch(rows, cfg);
+    }
+    pg.running = false; pg.stop = false;
+    stopBtn.hidden = true;
+    updateCost();
+  }
+  runBtn.addEventListener("click", run);
+
+  updatePin(); updateCost();
+  fetchPrices(updateCost);
+}
+
+function wireGate(){
+  $("pg-enable").addEventListener("click", function(){
+    $("pg-gate").hidden = true;
+    var app = $("pg-app");
+    app.hidden = false;
+    if (!app.childNodes.length) buildPlayground();
+    var k = document.getElementById("pg-key");
+    if (k) k.focus();
+  });
+}
+
+/* =====================================================================
+   ROUTER
+   ===================================================================== */
+var TABS = ["writeup", "graphs", "prompts", "playground"];
+function route(){
+  var h = (location.hash || "#/writeup").replace(/^#\/?/, "");
+  if (TABS.indexOf(h) < 0) h = "writeup";
+  TABS.forEach(function(t){
+    var sec = $("tab-" + t);
+    if (sec) sec.classList.toggle("on", t === h);
+  });
+  document.querySelectorAll("nav a[data-tab]").forEach(function(a){
+    var on = a.getAttribute("data-tab") === h;
+    a.classList.toggle("on", on);
+    if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  document.title = "Two Bottles - " + h.charAt(0).toUpperCase() + h.slice(1);
+  hideTip();
+}
+window.addEventListener("hashchange", route);
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+(function(){
+  if (!BD || !PR || !MD){
+    var b = el("div", "bad",
+      "bundle.js failed to load, so the charts, prompts and playground cannot render. " +
+      "The writeup above is still complete; the raw data is in data.json / prompts.json / models.json.");
+    document.querySelector("main").insertBefore(b, document.querySelector("main").firstChild);
+    route();
+    return;
+  }
+  renderWriteupTable();
+  renderCharts();
+  renderFigures();
+  renderPrompts();
+  wireGate();
+  route();
+})();
+</script>
+</body>
+</html>
