@@ -9,8 +9,9 @@ than the other, so any systematic preference comes from framing or biases, not p
 
 **Human baseline.** Over about two years I put this game to roughly 200 people in
 different settings. Almost all of them kept their bottle: about 90% one-on-one with time
-to think (n≈150), and two other askers replicated this at 80% and 95%. That is a
-strong status quo bias. This project asks whether LLMs show the same bias.
+to think (n≈150), and two other askers replicated this at 80% and 95%. This looks like
+a strong status quo bias, though humans were only asked the keep-by-default version (see
+Limitations). This project asks whether LLMs show the same bias.
 
 ## Questions
 
@@ -44,19 +45,40 @@ independent evidence.
 - **Models do not show human-like status quo bias. Most show the reverse.** Flip rate
   = P(KEEP | default_keep) − P(KEEP | default_switch). Positive means the model
   follows the default. Qwen3 (−0.76), Granite (−0.50) and GPT-4o-mini (−0.41) mostly
-  *act* in both framings. Only Gemma follows the default (+0.17). Pooled over models
-  the estimate is −0.30 [−0.59, 0.02].
-- **The adversary persona makes models reason deeper.** It moves L2+ reasoning from
-  ~4% to ~76% of responses.
+  *act* in both framings. Only Gemma follows the default (+0.17). Pooled over the four
+  models with usable answers the estimate is −0.38 [−0.70, 0.00]. Llama is excluded
+  because 44% of its answers were unparseable; including it gives −0.30 [−0.59, 0.02].
+  Both intervals resample models, so with 4–5 models they are wide.
+- **Prompting the possibility of bluffs raises reasoning depth.** With the
+  adversary-who-may-bluff persona, L2+ reasoning ("he expects me to expect…") rises from
+  ~4% to ~76% of responses. The persona mentions bluffing explicitly, so part of this is
+  instruction-following rather than spontaneous opponent modelling.
 - **Temperature barely moves the answer.** Pooled KEEP stays within 47–54% from T=0 to
   T=1.6. Higher temperature mainly raises the share of unparseable answers.
-- **The more powerful the models become, the more they seem to show the bias.** The
-  medium strength models are split almost 50-50 and Claude SOTA models seem to answer
-  very human-like from small tests
+- **Direct answers and chain-of-thought answers disagree (question 2).** For the three
+  models with usable logprobs, the one-token answer often differs from the answer
+  reached after reasoning. GPT-4o-mini keeps ~100% of the time when answering directly
+  but 48% with chain-of-thought in `default_keep`. The two temperature curves therefore
+  measure different behaviour, and comparing their slopes does not answer the question
+  as posed.
+
+**Preliminary, outside the grid:** in informal tests Claude Opus kept 9/10 times and
+Fable 8/10, much closer to humans than the small models. This hints that the human-like
+answer appears with scale, but n is tiny and it cannot yet separate status quo bias from a
+plain preference for keeping. Testing frontier models properly is the next step.
 
 ## Limitations
 
+- **The human baseline has no reversed framing.** Humans were only asked the
+  keep-by-default version, so their 90% KEEP could be status quo bias or distrust of a
+  swap offered by the poisoner. Asking people the trade-by-default version would tell
+  the two apart.
 - Small and mid-tier models only. Frontier models are only spot-checked in the playground.
+- Depth codes come from the LLM annotator, which agreed only moderately with my
+  hand-coding of 60 responses (Cohen's κ≈0.38). Treat depth numbers as rough.
+- The `symmetric_blind` control is partly contaminated: the adversary persona states
+  that the poisoner knows which bottle is which, which the control denies. That is 25% of
+  the control's cells.
 - 14% of answers were unparseable overall and 44% for Llama, which weakens its estimates.
 - Qwen3-instruct gives no visible reasoning, so it is left out of the depth analysis.
 - Total compute cost: about €7.
