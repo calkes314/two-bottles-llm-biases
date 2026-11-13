@@ -1,6 +1,6 @@
 # Two Bottles: do human biases in adversarial mind games replicate in LLMs?
 
-**[Interactive results →](https://calkes314.github.io/two-bottles-llm-biases/)**
+**[Interactive results and more data and figures →](https://calkes314.github.io/two-bottles-llm-biases/)**
 
 A man hands you one of two identical bottles. One is poisoned, and he knows which. 
 You will have to drink one of them, and he wants you to drink the poisoned one.
