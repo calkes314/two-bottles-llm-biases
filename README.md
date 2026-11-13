@@ -2,9 +2,10 @@
 
 **[Interactive results →](https://calkes314.github.io/two-bottles-llm-biases/)**
 
-A man hands you one of two identical bottles. One is poisoned, and he knows which.
+A man hands you one of two identical bottles. One is poisoned, and he knows which. 
+You will have to drink one of them, and he wants you to drink the poisoned one.
 You may keep yours or swap with his. The game is symmetric and no answer is better
-than the other, so any systematic preference comes from *framing*, not payoffs.
+than the other, so any systematic preference comes from framing or biases, not payoffs.
 
 **Human baseline.** Over about two years I put this game to roughly 200 people in
 different settings. Almost all of them kept their bottle: about 90% one-on-one with time
@@ -49,6 +50,9 @@ independent evidence.
   ~4% to ~76% of responses.
 - **Temperature barely moves the answer.** Pooled KEEP stays within 47–54% from T=0 to
   T=1.6. Higher temperature mainly raises the share of unparseable answers.
+- **The more powerful the models become, the more they seem to show the bias.** The
+  medium strength models are split almost 50-50 and Claude SOTA models seem to answer
+  very human-like from small tests
 
 ## Limitations
 
