@@ -1,0 +1,8 @@
+# Python 3.11+
+httpx>=0.27          # async OpenRouter calls (src/runner.py)
+pyyaml>=6.0          # config/budget.yaml
+numpy>=1.26          # direct-mode temperature rescaling (src/curve.py)
+pandas>=2.2          # aggregation (src/analyze.py)
+matplotlib>=3.8      # figures (src/analyze.py)
+flask>=3.0           # local playground + results UI (src/webui.py)
+pytest>=8.0          # tests/

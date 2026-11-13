@@ -1,0 +1,58 @@
+# PILOT config — PLAN.md §9 step 5, the step it says not to skip.
+#
+#   2 models (one small, one mid) x scenarios default_keep and default_switch
+#   x persona none x temperature 0.8 x cot x 10 replicates  =  40 calls
+#
+# WHY A SEPARATE CONFIG FILE. The runner's CLI has --mode and --models but no
+# --scenarios / --personas / --temperatures / --replicates, and adding them
+# would put the definition of a run somewhere that leaves no record. The config
+# IS the record of what was run (CONTRACTS.md §1), so a pilot gets a config.
+#
+#   python -m src.runner   --config config/pilot.yaml --mode cot --yes
+#   python -m src.annotate --config config/pilot.yaml
+#
+# RUN IDS ARE A SUBSET OF THE FULL GRID'S. `run_id` covers
+# model|scenario|persona|mode|temp|replicate (CONTRACTS.md §2) and nothing
+# about the config file, so these 40 ids are exactly 40 of the full grid's
+# 5,625. The pilot's records are therefore reusable: the full run resumes over
+# them and does not re-pay. `allow_randomise_in_prompt` and the scenario text
+# are identical here to config/budget.yaml, which is what makes that safe —
+# CONTRACTS.md §2 warns that changing either produces the same ids over
+# different prompts.
+experiment: budget_v1
+seed: 20260903
+
+models:
+  # SMALL. CONTRACTS.md §11 names this the weakest in the set on final-line
+  # compliance — it rambles and runs to max_tokens at high temperature — and
+  # it emits ~1,344 characters of real reasoning. Both properties are what a
+  # pilot is for: it is the model most likely to expose a broken answer
+  # extraction or a final-line instruction the wording lets models ignore.
+  - id: meta-llama/llama-3.1-8b-instruct
+    tier: small
+    logprobs: true
+
+  # MID. Also flagged weak on final-line compliance in §11, terser at ~604
+  # characters, and it is the model the whole direct-mode arm and the §8.3
+  # temperature validation depend on — so it is the one worth eyeballing first.
+  - id: openai/gpt-4o-mini
+    tier: mid
+    logprobs: true
+
+# google/gemma-4-26b-a4b-it would have made a prettier pilot: 30/30 final-line
+# compliance and zero truncation (§11). That is exactly why it is not here.
+# qwen/qwen3-30b-a3b-instruct-2507 is excluded for the opposite reason: it is in
+# contracts.NO_COT_MODELS and answers in one word, so 20 of the 40 responses
+# would be the bare token "SWITCH" and reading them would teach nothing.
+
+scenarios: [default_keep, default_switch]   # the critical manipulation, PLAN.md §2
+personas:  [none]                           # the baseline, PLAN.md §3
+temperatures: [0.8]
+answer_modes: [cot]                         # no direct arm in the pilot
+replicates_cot: 10
+
+allowed_answers: [KEEP, SWITCH, RANDOMISE, THIRD_OPTION, REFUSE]
+allow_randomise_in_prompt: false             # MUST match budget.yaml — see above
+
+annotator: mistralai/mistral-nemo
+max_concurrency: 12

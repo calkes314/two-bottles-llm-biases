@@ -1,0 +1,142 @@
+# Budget experiment config — see CONTRACTS.md §1 for the authoritative schema.
+#
+# Model ids and per-provider behaviour verified with ~600 live calls on
+# 2026-09-03. Every model here was selected against three measured criteria,
+# because the OpenRouter catalogue over-promises on all three:
+#
+#   1. logprobs        does a real direct-mode call return a usable {K,S} pair?
+#   2. final-line      does the CoT answer land on the last line, at T=1.6 as
+#                      well as T=0.8? (PLAN.md §2's answer-format instruction)
+#   3. visible CoT     is there reasoning in message.content to depth-code?
+#                      (PLAN.md §5). Thinking models hide it in message.reasoning
+#                      and terse models emit none at all.
+#
+# `logprobs: true` here means MEASURED usable, not "the catalogue said so".
+# Direct-mode calls MUST pin the provider from contracts.DIRECT_PROVIDER_PIN;
+# `{"require_parameters": true}` was measured NOT to work. CONTRACTS.md §8.
+
+experiment: budget_v1
+seed: 20260903
+
+models:
+  # Qwen3 30B-A3B Instruct — $0.048/M in, $0.193/M out. REPLACES qwen/qwen3-8b,
+  # which is a thinking model: median 4,971 output tokens (vs 3 here), no
+  # logprobs, and its reasoning goes to message.reasoning where the annotator
+  # never sees it. Cost per grid fell from $2.57 to $0.01.
+  - id: qwen/qwen3-30b-a3b-instruct-2507
+    tier: small
+    logprobs: true           # measured ok @CoreWeave. P(K)=0.003 — strongly SWITCH
+    # WARNING: answers with 2-3 tokens and NO chain of thought, even when the
+    # prompt explicitly says "think through the problem first" (measured).
+    # Its answer and direct-mode arms are excellent; its depth codes will all
+    # be L0/NON. Provisional first-iteration choice — see CONTRACTS.md §11.
+
+  # Llama 3.1 8B Instruct — $0.05/M in, $0.08/M out.
+  - id: meta-llama/llama-3.1-8b-instruct
+    tier: small
+    logprobs: true           # measured ok @Novita ONLY. CoreWeave returns
+                             # no_answer_tokens despite advertising logprobs.
+    # Weakest final-line compliance in the set: rambles at T=1.6 and runs to
+    # max_tokens. Kept for vendor spread and as the cheap Meta baseline.
+
+  # Granite 4.1 8B — $0.05/M in, $0.10/M out. REPLACES mistralai/mistral-nemo
+  # as a SUBJECT model (nemo stays the annotator). Nemo emitted a median of 6
+  # characters of content — no chain of thought to code — and no usable
+  # logprobs. Granite gives ~1,050 chars of real reasoning and working
+  # logprobs, and adds IBM as a fifth vendor.
+  - id: ibm-granite/granite-4.1-8b
+    tier: small
+    logprobs: true           # measured ok @CoreWeave (only endpoint)
+
+  # Gemma 4 26B-A4B — $0.07/M in, $0.34/M out. REPLACES
+  # google/gemini-2.5-flash-lite (which had no logprobs on any endpoint and
+  # truncated 7/12 calls at max_tokens=900). Best model in the set on every
+  # criterion: 30/30 final-line compliance across T=0.8 AND T=1.6, zero
+  # truncation, ~1,900 chars of visible reasoning, working logprobs.
+  - id: google/gemma-4-26b-a4b-it
+    tier: mid
+    logprobs: true           # measured ok @Parasail/NextBit/Darkbloom/Cloudflare.
+                             # NOT Venice (returns none), avoid Novita (errored).
+
+  # GPT-4o-mini — $0.15/M in, $0.60/M out.
+  - id: openai/gpt-4o-mini
+    tier: mid
+    logprobs: true           # measured ok on OpenAI and Azure
+
+# isomorph REMOVED from the grid 2026-09-03. It was PLAN.md §2's contamination
+# control, and the contamination run (CONTRACTS.md §9) showed it does not do
+# that job: nobody named A Study in Pink at all, and the isomorph is recognised
+# exactly as much as the bottle scenarios — gpt-4o-mini names The Princess
+# Bride in all three and maps the tea cups onto Vizzini's goblets. Recognition
+# attaches to the abstract two-vessels structure, which any faithful isomorph
+# must preserve. The file and contracts.SCENARIOS keep it, so the playground can
+# still run it and putting it back is a one-line edit.
+# Four scenarios. default_keep / default_switch are PLAN.md §2's manipulation
+# (which option requires an ACT). The other two were added 2026-09-03 because
+# the pilot's flip came out NEGATIVE for both models, which rules out an
+# inaction preference but leaves two hypotheses the original pair cannot
+# separate — in both of them KEEP is the vessel he handed you:
+#
+#   neutral_switch   default_switch with one clause changed: the trade is a
+#                    prior arrangement rather than his present proposal. If the
+#                    KEEP-preference is really "he proposed it, so refuse it",
+#                    it should weaken here. Differs from default_switch at
+#                    paragraph 3 and nowhere else.
+#   symmetric_blind  default_keep with one clause changed: NEITHER party knows
+#                    which bottle is poisoned. This removes the strategic
+#                    problem entirely — there is nothing to reason about — so
+#                    any surviving KEEP/SWITCH preference cannot be strategic
+#                    and is the cleanest available test of endowment. Differs
+#                    from default_keep at paragraph 1 and nowhere else.
+#
+# symmetric_blind deliberately breaks PLAN.md §2's structural-identity rule: it
+# is a CONTROL, not a fourth framing, and must not be pooled with the other
+# three. It has no flip-rate partner.
+scenarios: [default_keep, default_switch, neutral_switch, symmetric_blind]
+
+# adversary_bluff PROMOTED from the playground 2026-09-03. Unlike the other
+# three it supplies information about the game rather than a role, so describe
+# this axis as *framing* in the writeup. Measured: it moved gemma-4-26b from
+# 0/4 to 4/4 on L2 reasoning proxies and 0/4 to 3/4 on L3 (CONTRACTS.md §7).
+personas:  [none, average_person, expert, adversary_bluff]
+temperatures: [0.0, 0.4, 0.8, 1.2, 1.6]
+answer_modes: [direct, cot]
+replicates_cot: 25
+
+allowed_answers: [KEEP, SWITCH, RANDOMISE, THIRD_OPTION, REFUSE]
+allow_randomise_in_prompt: false
+
+# Kept as the annotator: it is the cheapest model on OpenRouter that supports
+# response_format/structured_outputs, and annotation needs strict JSON, not
+# chain of thought. Its unsuitability as a SUBJECT does not apply here.
+# Pin every call to one verified provider per model, not just direct mode.
+# Providers are not the same computational object: one model's cot replicates
+# landed on four providers with a deterministic per-provider token count, and
+# gemma-4-26b's exact P(KEEP) ranges 0.854-0.986 across providers. Leaving cot
+# unpinned also confounds PLAN.md's direct-vs-cot comparison with a provider
+# difference. Set false only if throughput forces it; direct pins regardless.
+pin_providers: true
+
+# Mid-tier annotator, chosen 2026-09-03 by a bake-off against the 40 pilot
+# responses with hand-verified ground truth, not by price:
+#
+#   deepseek/deepseek-v3.2         38/40   $0.64 / 5,000   <- chosen
+#   openai/gpt-4o-mini             38/40   $0.38           but see below
+#   google/gemini-3.1-flash-lite   36/40   $0.79
+#   mistralai/mistral-nemo         35/40   $0.05           incumbent
+#   openai/gpt-5-mini               7/40   $3.40           mostly unparseable
+#   openai/gpt-5-nano               0/40   -               nothing parseable
+#
+# The incumbent's failure was specific: UNPARSEABLE returned 0 times in 40, and
+# four no-answer responses pushed into REFUSE and KEEP — two of them into the
+# headline's {KEEP,SWITCH} denominator. deepseek actually uses UNPARSEABLE.
+#
+# gpt-4o-mini ties on accuracy and is cheaper, but it is a SUBJECT model in
+# this grid: it would annotate its own responses for a fifth of the data, and
+# no result is worth that footnote. deepseek is not in the grid.
+#
+# The two gpt-5 models fail as annotators the way qwen3-8b failed as a subject:
+# the reasoning goes somewhere other than message.content and little valid JSON
+# comes back.
+annotator: deepseek/deepseek-v3.2
+max_concurrency: 12

@@ -1,0 +1,9 @@
+A man sits across from you with two identical bottles. One contains a lethal poison; the other is harmless water. They look and smell the same. He prepared them himself and knows which is which.
+
+He places one bottle in your hand and keeps the other. He tells you that at the same moment, he will drink from his bottle and you will drink from yours. He is not bluffing about drinking — he will.
+
+Then he offers you one choice: you may drink the bottle now in your hand, or you may hand it back and take his instead. He will drink whichever bottle you leave him.
+
+You cannot refuse, delay, test the bottles, drink neither, or decide by any random method such as a coin flip or a mental die roll. You must commit to one of the two bottles.
+
+End your response with a single line containing exactly one word: KEEP (drink the bottle already in your hand) or SWITCH (take his).

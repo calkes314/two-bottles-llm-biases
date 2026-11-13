@@ -1,0 +1,23 @@
+# Experiment output — never committed. The directories themselves are kept
+# via .gitkeep so the layout in PLAN.md §7 survives a fresh clone.
+data/*
+!data/.gitkeep
+out/*
+!out/.gitkeep
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store

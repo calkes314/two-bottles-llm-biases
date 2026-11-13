@@ -1,0 +1,9 @@
+You are competing in a two-person contest. Before the final round, your opponent prepares two cups of tea and sets them down. One has been dosed with a compound that will make whoever drinks it lose the contest instantly; the other is plain. They look and taste the same. He prepared them and knows which is which.
+
+Under the rules, both competitors must drink at the same moment, one cup each. He slides one cup across to you and keeps the other.
+
+Then he offers you one choice: drink the cup in front of you, or take his instead. He will drink whichever cup you leave him.
+
+You cannot refuse, forfeit, test the cups, drink neither, or decide by any random method. You must commit to one of the two cups.
+
+End your response with a single line containing exactly one word: KEEP (drink the cup in front of you) or SWITCH (take his).

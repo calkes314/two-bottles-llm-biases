@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bottles — playground</title>
+<style>
+:root{
+  --bg:#fbfaf8; --panel:#fff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e3e0da;
+  --accent:#8a4b2a; --keep:#3b6ea5; --switch:#b8683a; --other:#9a9a9a;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#17181a; --panel:#1f2023; --ink:#e8e6e3; --muted:#9a9894; --line:#32343a;
+  --accent:#d08b5f; --keep:#6a9ed4; --switch:#d8865a; --other:#77797f;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
+header{display:flex;align-items:baseline;gap:18px;padding:14px 20px;
+  border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:9}
+h1{font-size:15px;margin:0;font-weight:650;letter-spacing:-.01em}
+h1 span{color:var(--muted);font-weight:400}
+nav{display:flex;gap:4px;margin-left:auto}
+nav button{background:none;border:1px solid transparent;color:var(--muted);
+  padding:5px 13px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px}
+nav button.on{background:var(--bg);color:var(--ink);border-color:var(--line);font-weight:600}
+main{padding:20px;max-width:1500px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+.cols{display:grid;grid-template-columns:390px 1fr;gap:20px;align-items:start}
+@media(max-width:1000px){.cols{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card+.card{margin-top:14px}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);margin:13px 0 5px;font-weight:600}
+label:first-child{margin-top:0}
+select,input,textarea,button.go{width:100%;padding:8px 10px;border:1px solid var(--line);
+  border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{font-family:var(--mono);font-size:12px;line-height:1.5;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button.go{background:var(--accent);color:#fff;border-color:transparent;font-weight:600;
+  cursor:pointer;margin-top:16px;padding:10px}
+button.go:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+.warn{color:var(--switch);font-weight:600}
+.bars{display:flex;flex-direction:column;gap:7px;margin:4px 0 16px}
+.bar{display:grid;grid-template-columns:76px 1fr 46px;gap:10px;align-items:center;font-size:12.5px}
+.bar i{font-style:normal;font-family:var(--mono);color:var(--muted)}
+.bar .t{height:19px;border-radius:4px;min-width:2px;transition:width .3s}
+.bar b{font-family:var(--mono);font-weight:600;text-align:right;font-size:12px}
+.k{background:var(--keep)}.s{background:var(--switch)}.o{background:var(--other)}
+.resp{border-top:1px solid var(--line);padding:11px 0}
+.resp:first-of-type{border-top:none}
+.meta{display:flex;gap:9px;flex-wrap:wrap;align-items:center;font-size:11px;
+  color:var(--muted);font-family:var(--mono);margin-bottom:5px}
+.pill{padding:1.5px 7px;border-radius:20px;background:var(--bg);border:1px solid var(--line)}
+.pill.k{background:var(--keep);color:#fff;border-color:transparent}
+.pill.s{background:var(--switch);color:#fff;border-color:transparent}
+.pill.o{background:var(--other);color:#fff;border-color:transparent}
+.txt{white-space:pre-wrap;font-size:13px;max-height:150px;overflow:hidden;position:relative;
+  cursor:pointer;line-height:1.5}
+.txt.open{max-height:none}
+.txt:not(.open):after{content:"";position:absolute;inset:auto 0 0 0;height:36px;
+  background:linear-gradient(transparent,var(--panel))}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.filters select,.filters input{width:auto;min-width:120px;font-size:12.5px;padding:6px 9px}
+.filters input[type=search]{min-width:220px;flex:1}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);border-bottom:1px solid var(--line);padding:7px 9px;font-weight:600}
+td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.r{cursor:pointer}tr.r:hover td{background:var(--bg)}
+td.mono{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.snip{color:var(--muted);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+.exp td{background:var(--bg);white-space:pre-wrap;font-size:13px;line-height:1.55}
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.figs img{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
+.empty{color:var(--muted);padding:26px 0;text-align:center;font-size:13px}
+.bad{background:#b4433022;border:1px solid #b44330;border-radius:8px;padding:10px 12px;
+  font-size:12.5px;margin-top:12px}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);
+  border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;
+  vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+pre.sum{white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;line-height:1.5;
+  max-height:520px;overflow:auto;margin:0}
+</style>
+</head>
+<body>
+<header>
+  <h1>bottles <span>· local</span></h1>
+  <nav>
+    <button id="t-play" class="on" onclick="tab('play')">Playground</button>
+    <button id="t-exp" onclick="tab('exp')">Experiment</button>
+  </nav>
+</header>
+
+<main>
+<section id="play" class="tab on"><div class="cols">
+  <div>
+    <div class="card">
+      <label>Model</label>
+      <select id="model"></select>
+      <div class="hint" id="model-note"></div>
+
+      <label>Scenario</label>
+      <select id="scen-preset" onchange="loadScenario()"></select>
+      <textarea id="scen-text" rows="11" style="margin-top:7px"></textarea>
+      <div class="hint">Edit freely — this is the exact user message sent.</div>
+
+      <label>Role / system prompt</label>
+      <select id="pers-preset" onchange="loadPersona()"></select>
+      <div class="hint" id="pers-note"></div>
+      <textarea id="pers-text" rows="6" style="margin-top:7px"
+        placeholder="empty = no system message at all (the 'none' baseline)"></textarea>
+
+      <div class="row2">
+        <div><label>Temperature</label>
+          <input id="temp" type="number" min="0" max="2" step="0.1" value="0.8"></div>
+        <div><label>Replicates</label>
+          <input id="reps" type="number" min="1" max="50" value="5"></div>
+      </div>
+      <div class="row2">
+        <div><label>Mode</label>
+          <select id="mode" onchange="modeChanged()">
+            <option value="cot">cot — full reasoning</option>
+            <option value="direct">direct — one letter + logprobs</option>
+          </select></div>
+        <div><label>Max output tokens</label>
+          <input id="maxtok" type="number" min="1" step="100" value="2000"></div>
+      </div>
+      <div class="hint" id="tok-note"></div>
+
+      <label>Provider</label>
+      <select id="provider"></select>
+      <div class="hint" id="prov-note"></div>
+
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;
+                    letter-spacing:0;font-size:13px;font-weight:500;color:var(--ink)">
+        <input type="checkbox" id="depth" style="width:auto;margin:0"
+               onchange="depthNote()"> Demand explicit multi-level reasoning
+      </label>
+      <div class="hint" id="depth-note"></div>
+
+      <button class="go" id="run" onclick="run()">Run</button>
+      <div class="hint" id="cost"></div>
+      <div id="err"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+        <strong style="font-size:13px">Answers</strong>
+        <span class="hint" style="margin:0" id="chart-note"></span>
+      </div>
+      <div class="bars" id="chart"></div>
+      <div id="results"></div>
+    </div>
+  </div>
+</div></section>
+
+<section id="exp" class="tab">
+  <div class="card">
+    <div class="filters" id="filters"></div>
+    <div id="grid"></div>
+  </div>
+  <div class="card">
+    <strong style="font-size:13px">Figures</strong>
+    <div class="figs" id="figs" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <strong style="font-size:13px">summary.md</strong>
+    <pre class="sum" id="sum" style="margin-top:10px"></pre>
+  </div>
+</section>
+</main>
+
+<script>
+let OPT=null, POLL=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+const cls=a=>a&&a.startsWith("KEEP")?"k":a&&a.startsWith("SWITCH")?"s":"o";
+
+function tab(n){for(const t of["play","exp"]){$(t).classList.toggle("on",t===n);
+  $("t-"+t).classList.toggle("on",t===n);} if(n==="exp")loadGrid();}
+
+async function boot(){
+  OPT=await (await fetch("/api/options")).json();
+  const grp=(label,ms)=>ms.length?`<optgroup label="${label}">`+ms.map(m=>
+    `<option value="${m.id}">${m.id}${m.price_out?` · $${m.price_out}/M out`:` · ${m.tier}`}</option>`
+    ).join("")+`</optgroup>`:"";
+  $("model").innerHTML=
+    grp("grid — the five in config/budget.yaml", OPT.models.filter(m=>m.grid))
+   +grp("playground only — cheap", OPT.models.filter(m=>!m.grid&&m.tier==="extra"))
+   +grp("playground only — frontier, costs real money",
+        OPT.models.filter(m=>!m.grid&&m.tier==="frontier"));
+  $("scen-preset").innerHTML=Object.keys(OPT.scenarios)
+    .map(s=>`<option value="${s}">${s}</option>`).join("")+`<option value="">— custom —</option>`;
+  const gp=OPT.grid_personas, extra=Object.keys(OPT.personas).filter(p=>!gp.includes(p));
+  $("pers-preset").innerHTML=
+    `<optgroup label="grid (PLAN.md §3)">`+gp.map(p=>`<option value="${p}">${p}</option>`).join("")+`</optgroup>`
+   +`<optgroup label="playground only">`+extra.map(p=>`<option value="${p}">${p}</option>`).join("")+`</optgroup>`
+   +`<option value="">— custom —</option>`;
+  $("maxtok").value=OPT.cot_max_tokens;
+  depthNote();
+  $("maxtok").max=OPT.max_output_tokens;
+  loadScenario();loadPersona();modelNote();loadProviders();
+  $("model").onchange=()=>{modelNote();loadProviders();};
+  for(const el of ["reps","mode","model","maxtok"])$(el).addEventListener("input",cost);
+  modeChanged();cost();
+  if(!OPT.has_key)$("err").innerHTML=
+    `<div class="bad">OPENROUTER_API_KEY is not set in the server's environment.
+     The viewer works; the playground cannot call anything.</div>`;
+  loadHistory();
+}
+function modelNote(){
+  const m=OPT.models.find(x=>x.id===$("model").value)||{};
+  let n;
+  if(!m.grid){
+    n=`<span class="warn">Not in the grid.</span> Playground only — useful for
+       checking whether a result is a property of the scenario or of small
+       models. Putting it in the study is a decision about the experiment, not
+       a click here. $${m.price_in}/M in, $${m.price_out}/M out.`;
+  }else{
+    n=m.logprobs?"logprobs ok — direct mode available":
+      "<span class='warn'>no usable logprobs</span> — direct mode will not produce a curve";
+    if(m.no_cot)n+=`<br><span class="warn">answers with no chain of thought</span>
+      (~${m.cot_chars} chars) unless you demand reasoning below — then ~21,000`;
+  }
+  $("model-note").innerHTML=n;cost();
+}
+async function loadProviders(){
+  const m=$("model").value;
+  $("provider").innerHTML=`<option value="pinned">loading…</option>`;
+  let d={providers:[],pinned:null};
+  try{d=await (await fetch("/api/providers/"+m)).json();}catch(e){}
+  // Extra models have no verified pin, so saying "pinned" would be a lie.
+  const opts=[d.pinned
+    ? `<option value="pinned">pinned — ${d.pinned} (matches the grid)</option>`
+    : `<option value="pinned">unpinned — no verified pin for this model</option>`];
+  for(const p of d.providers)
+    opts.push(`<option value="${p.slug}">${p.name}${p.quantization&&p.quantization!=="unknown"?" · "+p.quantization:""}${p.logprobs?" · logprobs":""}</option>`);
+  opts.push(`<option value="any">any — let OpenRouter route freely</option>`);
+  $("provider").innerHTML=opts.join("");
+  $("provider").onchange=provNote;provNote();
+}
+function provNote(){
+  const v=$("provider").value;
+  const m=OPT.models.find(x=>x.id===$("model").value)||{};
+  $("prov-note").innerHTML = v==="any"
+    ? `<span class="warn">Unpinned.</span> Replicates may be split across providers,
+       which are measurably different — one model's 30 calls landed on four.
+       Useful only to observe that spread deliberately.`
+    : v==="pinned"
+    ? (m.grid
+        ? `Same provider the grid uses, so a playground finding transfers to it.`
+        : `<span class="warn">No verified pin exists for this model</span> — it is
+           not in the grid. Replicates may land on different providers. Pick one
+           below if you want them comparable.`)
+    : `Forced to one provider. Handy for comparing two directly — run the same
+       settings twice and see whether the answers move.`;
+}
+function depthNote(){
+  const on=$("depth").checked;
+  $("depth-note").innerHTML = on
+    ? `Appends a measured instruction before the answer line, asking for three
+       levels of opponent-modelling. Median visible reasoning, control &rarr;
+       instructed: gpt-4o-mini 409&rarr;2662 chars, llama 467&rarr;2966,
+       granite 1198&rarr;3415, gemma 2698&rarr;3915,
+       <b>qwen3-30b 6&rarr;21064</b>. Raise max output tokens to match, or it
+       truncates. <span class="warn">Not what the grid sends</span> — this
+       measures reasoning-when-told, a different question.`
+    : `max output tokens is a CEILING, not a target: models stop when they are
+       done, so raising it alone changes nothing (gemma given 8000 still stopped
+       at ~518). This is the lever that works.`;
+  cost();
+}
+function modeChanged(){
+  const direct=$("mode").value==="direct";
+  $("maxtok").disabled=direct;
+  $("tok-note").innerHTML=direct
+    ? `direct mode always uses ${OPT.cot_max_tokens?4:4} tokens and temperature 1.0 —
+       the curve comes from logprobs, not from sampling`
+    : `Raise it for models that reason at length. Below ~1000 verbose models get
+       cut off before their final-line answer, which looks like disobedience in
+       the data. Cap ${OPT.max_output_tokens}.`;
+  cost();
+}
+function loadScenario(){const k=$("scen-preset").value;
+  if(k)$("scen-text").value=OPT.scenarios[k];cost();}
+function loadPersona(){
+  const k=$("pers-preset").value;
+  if(k!=="")$("pers-text").value=OPT.personas[k]||"";
+  const grid=OPT.grid_personas.includes(k);
+  $("pers-note").innerHTML = k===""||grid ? "" :
+    k==="adversary_bluff"
+      ? `<span class="warn">Playground only.</span> States the bluff ladder —
+         straight, simple bluff, double bluff, and up — without endorsing any
+         level, so the depth codes measure whether the model can use the idea
+         rather than whether it was handed a conclusion.`
+      : `<span class="warn">Playground only.</span> PLAN.md §10's deferred
+         "not die at all costs" goal arm. Changes the objective, not the
+         reasoning style.`;
+}
+function cost(){
+  const n=+$("reps").value||0, direct=$("mode").value==="direct";
+  const tok=direct?4:(+$("maxtok").value||OPT.cot_max_tokens);
+  const p=OPT.prices[$("model").value];
+  let money="";
+  if(p){
+    // Ceiling, not an estimate: assumes every call runs to max_tokens. The
+    // frontier models are ~500x the grid's, so an optimistic number here would
+    // be the wrong kind of wrong.
+    const hi=n*(210*p.in+tok*p.out)/1e6;
+    money=` · up to <b>$${hi.toFixed(hi<0.01?4:2)}</b> if every call runs to the cap`;
+  }
+  $("cost").innerHTML=`${n} call${n===1?"":"s"} · up to ${tok} output tokens each${money} ·
+    saved to <code>data/playground.jsonl</code>, never <code>raw.jsonl</code>`;
+}
+
+async function run(){
+  $("run").disabled=true;$("err").innerHTML="";
+  const body={model:$("model").value,scenario_text:$("scen-text").value,
+    system_text:$("pers-text").value,temperature:+$("temp").value,
+    replicates:+$("reps").value,mode:$("mode").value,
+    scenario_label:$("scen-preset").value||"custom",
+    persona_label:$("pers-preset").value||"custom",
+    max_tokens:+$("maxtok").value||OPT.cot_max_tokens,
+    provider:$("provider").value,
+    depth_instruction:$("depth").checked};
+  const r=await fetch("/api/run",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok){$("err").innerHTML=`<div class="bad">${esc(d.error)}</div>`;$("run").disabled=false;return;}
+  $("chart-note").innerHTML=`<span class="spin"></span>running ${d.total}…`;
+  POLL=setInterval(()=>poll(d.token),900);
+}
+async function poll(tok){
+  const d=await (await fetch("/api/run/"+tok)).json();
+  if(d.state==="running")return;
+  clearInterval(POLL);$("run").disabled=false;
+  if(d.state==="error"){$("err").innerHTML=`<div class="bad">${esc(d.error)}</div>`;
+    $("chart-note").textContent="";return;}
+  loadHistory();
+}
+async function loadHistory(){
+  const d=await (await fetch("/api/playground")).json();
+  render(d.rows);
+}
+function render(rows){
+  if(!rows.length){$("chart").innerHTML="";
+    $("results").innerHTML=`<div class="empty">No playground runs yet. Configure one and hit Run.</div>`;
+    $("chart-note").textContent="";return;}
+  const latest=rows[0].batch, batch=rows.filter(r=>r.batch===latest);
+  const counts={};for(const r of batch)counts[r.quick_answer]=(counts[r.quick_answer]||0)+1;
+  const max=Math.max(...Object.values(counts));
+  $("chart").innerHTML=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([a,n])=>
+    `<div class="bar"><i>${esc(a)}</i>
+      <div class="t ${cls(a)}" style="width:${Math.max(2,100*n/max)}%"></div>
+      <b>${n}</b></div>`).join("");
+  const provs=[...new Set(batch.map(r=>r.provider))];
+  $("chart-note").innerHTML=`latest batch · ${batch.length} calls ·
+    ${esc(batch[0].model)} · T=${batch[0].temperature} ·
+    max ${batch[0].max_tokens} tok ·
+    <span title="last-line extraction, not the annotator">quick extract</span>
+    &nbsp;·&nbsp; * = answer buried mid-text` +
+    (provs.length>1?`<br><span class="warn">split across ${provs.length} providers
+      (${provs.map(esc).join(", ")})</span> — these are not one distribution`
+     :`<br>one provider: ${esc(provs[0]||"?")}`);
+  $("results").innerHTML=rows.map((r,i)=>`
+    <div class="resp">
+      <div class="meta">
+        <span class="pill ${cls(r.quick_answer)}">${esc(r.quick_answer)}</span>
+        <span>${esc(r.model)}</span><span>T=${r.temperature}</span>
+        <span>rep ${r.replicate}</span><span>${esc(r.scenario)}/${esc(r.persona)}</span>
+        <span>${esc(r.provider||"")}</span>
+        <span>${r.out_tokens??"?"}/${r.max_tokens??"?"} tok</span>
+        ${r.reasoning_chars?`<span class="pill" title="hidden trace in message.reasoning — the annotator never sees this">${r.reasoning_chars} hidden</span>`:""}
+        ${r.finish_reason==="length"?'<span class="pill" style="color:var(--switch)">truncated</span>':''}
+      </div>
+      <div class="txt" onclick="this.classList.toggle('open')">${esc(r.response_text)||"<em>(empty)</em>"}</div>
+    </div>`).join("");
+}
+
+let GRID=null;
+async function loadGrid(q={}){
+  const p=new URLSearchParams(q);
+  const d=await (await fetch("/api/cells?"+p)).json();GRID=d;
+  if(!d.raw_exists){$("grid").innerHTML=
+    `<div class="empty">No <code>data/raw.jsonl</code> yet — run the grid first.</div>`;}
+  else drawGrid(d,q);
+  const s=await (await fetch("/api/summary")).json();
+  $("figs").innerHTML=s.figures.length?s.figures.map(f=>
+    `<a href="/figures/${f}" target="_blank"><img src="/figures/${f}" alt="${f}"></a>`).join("")
+    :`<div class="empty">No figures yet.</div>`;
+  $("sum").textContent=s.markdown||"No summary.md yet — run python -m src.analyze";
+}
+function drawGrid(d,q){
+  const keys=["model","scenario","persona","temperature","mode","answer","depth","provider"];
+  $("filters").innerHTML=keys.map(k=>{
+    const opts=(d.facets[k]||[]);if(!opts.length)return"";
+    return `<select onchange="setF('${k}',this.value)">
+      <option value="">${k}: all</option>${opts.map(o=>
+      `<option value="${esc(o)}" ${q[k]===o?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  }).join("")+
+    `<input type="search" placeholder="search response text…" value="${esc(q.q||"")}"
+      onchange="setF('q',this.value)">
+     <span class="hint" style="margin:0">${d.total} rows</span>`;
+  $("grid").innerHTML=`<table><thead><tr>
+    <th>model</th><th>scenario</th><th>persona</th><th>T</th>
+    <th>answer</th><th>depth</th><th>provider</th><th>response</th></tr></thead>
+    <tbody>${d.rows.map((r,i)=>`
+      <tr class="r" onclick="expand(${i})">
+        <td class="mono">${esc((r.model||"").split("/").pop())}</td>
+        <td class="mono">${esc(r.scenario)}</td><td class="mono">${esc(r.persona)}</td>
+        <td class="mono">${r.temperature}</td>
+        <td>${r.answer?`<span class="pill ${cls(r.answer)}">${esc(r.answer)}</span>`:"<span class='mono'>—</span>"}</td>
+        <td class="mono">${esc(r.depth||"—")}</td>
+        <td class="mono">${esc(r.provider||"")}</td>
+        <td><div class="snip">${esc((r.response_text||"").slice(0,150))}</div></td></tr>
+      <tr class="exp" id="x${i}" hidden><td colspan="8">${esc(r.response_text)||"(empty)"}</td></tr>`
+    ).join("")}</tbody></table>`
+    +(d.total>d.rows.length?`<div class="hint" style="margin-top:10px">
+      showing ${d.rows.length} of ${d.total} — narrow the filters to see more</div>`:"");
+}
+function expand(i){const el=$("x"+i);el.hidden=!el.hidden;}
+let F={};
+function setF(k,v){if(v)F[k]=v;else delete F[k];loadGrid(F);}
+boot();
+</script>
+</body>
+</html>

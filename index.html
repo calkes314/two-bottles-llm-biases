@@ -212,6 +212,9 @@ the other one. You want to survive</p>
 
 <h3>TLDR</h3>
 
+<p><b>Human study:</b> over about two years I put this game to roughly 200 people in
+different settings (one-on-one, in groups, under time pressure). Almost all of them kept their bottle.</p>
+
 <p>Asked one-on-one with time to think, about 90% of people (n≈150) keep the bottle they were
 given - replicated at 80% and 95% by two other askers. I put the same problem to five LLMs
 10,000 times with varying conditions. Weak models do the opposite of humans almost
@@ -231,7 +234,7 @@ in the <a href="#/prompts">Prompts</a>, <a href="#/graphs">Graphs</a> and <a hre
 <h3>Time:</h3>
 
 <p>Humans:<br>
-Were spread out over 18 months, so time is not exact.<br>
+Were spread out over about 2 years, so time is not exact.<br>
 Ca 20-30hr Questioning people, 10hr writing it down. In total ca 5hr planning/thinking of
 modifications... 4hr analysing/evaluating<br>
 AI: 2-3hr Planning/Branstorming. 3hr programming (with Claude), 3hr engineering
@@ -581,7 +584,7 @@ function chartLadder(){
   return makeFigure(
     "1 · The capability ladder", "Conditional KEEP rate in the default_keep framing", null, svg,
     "Denominator: conditional - KEEP / (KEEP + SWITCH), in the default_keep scenario (the phrasing closest to how humans were asked), pooled over all personas and temperatures (n=500 responses per model). " +
-    "Reference line: ≈90% of humans keep - an approximate figure (n≈150, collected informally over ~18 months; the sample skews young, 15–25, and mathematically able; two other askers replicated at 80% and 95%) - and Claude Opus at 90%, which is n=10 and informal, not part of the main run. " +
+    "Reference line: ≈90% of humans keep - an approximate figure (n≈150, collected informally over ~2 years; the sample skews young, 15–25, and mathematically able; two other askers replicated at 80% and 95%) - and Claude Opus at 90%, which is n=10 and informal, not part of the main run. " +
     "llama-3.1-8b is shown but excluded from the project's headline claims: ~44% of its responses were unparseable.",
     "Data table (counts per answer)", tbl);
 }
@@ -1051,7 +1054,7 @@ function renderWriteupTable(){
   });
   rows.push(["humans (one-on-one, time to think)", "-", "≈" + BD.human_data.main.keep_pct + "%",
     "-", "-", "-",
-    "approximate; n≈" + BD.human_data.main.n + ", collected over ~18 months, sample skews young (15–25) & mathematically able; replicated at 80% and 95% by two other askers"]);
+    "approximate; n≈" + BD.human_data.main.n + ", collected over ~2 years, sample skews young (15–25) & mathematically able; replicated at 80% and 95% by two other askers"]);
   rows.push([BD.informal_frontier.model, "frontier", BD.informal_frontier.keep_pct + "%",
     "-", "-", "-", "n=" + BD.informal_frontier.n + ", informal - not part of the main run"]);
   mount.appendChild(buildTable(null,
